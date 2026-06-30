@@ -1,0 +1,7 @@
+fold0 MRR@10=0.0925 [74s]
+fold1 MRR@10=0.0981 [137s]
+fold2 MRR@10=0.1189 [204s]
+fold3 MRR@10=0.1145 [280s]
+fold4 MRR@10=0.1801 [350s]
+
+CV MRR@10 (NN-MLM) = 0.1208
