@@ -1,0 +1,11 @@
+fold 0 done [25s]
+fold 1 done [40s]
+fold 2 done [55s]
+fold 3 done [67s]
+fold 4 done [79s]
+softmax primary top-1 (singletons): 0.3249
+NONE recall: 0.3411
+
+BEST OOF composite=0.4300 params=(0.7, 0, 0.45, 0.3)
+  SolvF1=0.328 TempBA=0.466 TimeBA=0.248 CatMF1=0.814 Rare=0.485 Shift=0.545 CatPos=0.426 Exact=0.063
+wrote sub_mlp2.csv (4000, 5)
