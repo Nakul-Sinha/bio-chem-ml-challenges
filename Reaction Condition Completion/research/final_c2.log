@@ -1,0 +1,15 @@
+data dir: G:\Datacurve\eris2\CPU-dGPU-ML-chals\Reaction Condition Completion\dataset device: cuda
+featurizing...
+feat done (18000, 6193) [33s]
+seed 0 done [60s]
+seed 1 done [80s]
+seed 2 done [99s]
+wrote submission.csv & working/submission.csv: (4000, 5)
+            reaction_id   pred_solvents  ... pred_time_bin pred_catalyst_present
+0  RXNTEST_a327d3366a73            NONE  ...          long                     1
+1  RXNTEST_5224021c644e        O1CCOCC1  ...     very_long                     0
+2  RXNTEST_6324d6227efe     C(C)(=O)OCC  ...          long                     1
+3  RXNTEST_3f142ce69661         C1CCOC1  ...        medium                     0
+4  RXNTEST_dd246fb53fae  C1(=CC=CC=C1)C  ...          long                     1
+
+[5 rows x 5 columns]
