@@ -1,46 +1,19 @@
-"""
-Reaction Protocol Silent-Edit Repair -- official solution.
-
-Task: from a reaction-family header + a noisy (mixed-order / unlabeled / partially-omitted)
-protocol_note + a silent-edit correction_notice, generate the repaired six-slot canonical
-sequence  prep=..;activation=..;order=..;control=..;quench=..;workup..  (6 categorical slots,
-6 valid values each), scored with the Operation-Weighted Repair Sequence Score.
-
-Method (fine-tuned seq2seq, per challenge rules "ONLY fine-tune a model on the public examples"):
-  * A T5 encoder-decoder is fine-tuned to MAP the full prompt -> the 6-slot sequence.
-  * KEY: train notes are clean (all 6 slots, labeled), but TEST notes are unlabeled, show only
-    3 of 6 operations, omit the rest, and use unseen numeric tag-suffixes (only the word-prefix
-    of each bench tag is shared train<->test). We therefore DEGRADE each train row into many
-    test-style examples (unlabeled phrasing, 3 shown slots, randomized tag suffixes, a
-    missing-operation sentence) so the model learns to (a) decode the prefix->value mapping
-    position-free, (b) apply the correction_notice, and (c) infer the hidden slots from the
-    reaction family + visible slots (prep<->control and quench<->workup are correlated).
-  * Decoding is greedy; outputs are snapped to the valid per-slot vocabulary learned from train
-    (allowed diagnostic/post-processing), falling back to the family-mode value if the model
-    emits an invalid/missing slot, guaranteeing a structurally valid submission.
-
-No hardcoded id->answer map, no handwritten template parser as the predictor: every prediction
-is produced by the fine-tuned model.  Reads ./dataset[/public]/{train,test}.csv, writes
-./working/submission.csv and ./submission.csv.
-"""
 import os, re, sys, time, json, collections
 from pathlib import Path
 import numpy as np, pandas as pd, torch
 from torch.utils.data import Dataset, DataLoader
 from transformers import T5TokenizerFast, T5ForConditionalGeneration, get_linear_schedule_with_warmup
 
-# ----------------------------- config -----------------------------
 SEED        = 42
-MODEL_NAME  = "t5-small"   # validated: 5%-holdout CV weighted score 0.726 (oracle ceiling ~0.734)
+MODEL_NAME  = "t5-small"
 EPOCHS      = 8
-K_AUG       = 6            # test-style degraded copies per train row
-N_DENSE     = 1           # extra copies showing all available slots (denser decode signal)
+K_AUG       = 6
+N_DENSE     = 1
 BATCH       = 16
 LR          = 3e-4
 MAX_SRC     = 192
 MAX_TGT     = 48
 GEN_BEAMS   = 1
-# ------------------------------------------------------------------
 
 SLOTS = ["prep","activation","order","control","quench","workup"]
 W = {"prep":2.20,"activation":0.85,"order":0.60,"control":3.00,"quench":4.00,"workup":0.25}
@@ -150,7 +123,6 @@ def main():
     train=pd.read_csv(DATA/"train.csv"); test=pd.read_csv(DATA/"test.csv")
     recs=[parse_train_row(r) for _,r in train.iterrows()]
 
-    # valid per-slot vocab + family-mode fallback (post-processing only)
     vocab={s:set() for s in SLOTS}; famtbl=collections.defaultdict(lambda:collections.defaultdict(collections.Counter))
     for r in recs:
         for s in SLOTS: vocab[s].add(r["truth"][s]); famtbl[r["family"]][s][r["truth"][s]]+=1
@@ -158,7 +130,6 @@ def main():
     def fmode(fam,s):
         c=famtbl.get(fam,{}).get(s); return c.most_common(1)[0][0] if c else glob_mode[s]
 
-    # augment
     arng=np.random.default_rng(SEED+1); pairs=[]
     for r in recs:
         for _ in range(K_AUG): pairs.append(make_example(r,arng,n_show=3))
@@ -182,7 +153,6 @@ def main():
             torch.nn.utils.clip_grad_norm_(model.parameters(),1.0); opt.step(); sch.step(); tot+=loss.item()
         print(f"  epoch {ep+1}/{EPOCHS} loss {tot/len(dl):.4f} [{time.time()-t0:.0f}s]")
 
-    # predict on raw test prompts (already test-format)
     model.eval(); srcs=test["prompt"].astype(str).tolist(); outs=[]
     for i in range(0,len(srcs),64):
         enc=tok(srcs[i:i+64],max_length=MAX_SRC,truncation=True,padding=True,return_tensors="pt").to(dev)
@@ -198,7 +168,6 @@ def main():
         rows.append({"id":trow["id"],"repaired_sequence":seq_str(pred)})
     sub=pd.DataFrame(rows,columns=["id","repaired_sequence"])
 
-    # validate + write
     assert list(sub.columns)==["id","repaired_sequence"]
     assert len(sub)==len(test) and sub["id"].is_unique and set(sub["id"])==set(test["id"])
     for s in sub["repaired_sequence"]:
