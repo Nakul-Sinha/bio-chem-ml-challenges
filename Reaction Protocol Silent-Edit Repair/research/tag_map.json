@@ -1,0 +1,434 @@
+{
+"kell-orv-72D": [
+"prep",
+"dry_glass"
+],
+"tavo-prax-39A": [
+"activation",
+"prime_catalyst"
+],
+"sava-cim-79E": [
+"order",
+"substrate_slow"
+],
+"lumo-sava-42A": [
+"control",
+"warm_hold"
+],
+"vex-talin-22C": [
+"quench",
+"alcohol_quench"
+],
+"orv-cim-83G": [
+"workup",
+"aqueous_neutralize"
+],
+"faro-kell-78I": [
+"prep",
+"degas"
+],
+"nori-faro-84D": [
+"activation",
+"preform_imine"
+],
+"prax-talin-47C": [
+"order",
+"catalyst_last"
+],
+"talin-vex-19B": [
+"control",
+"ambient_slow"
+],
+"zuni-nori-19D": [
+"quench",
+"no_quench"
+],
+"lumo-sava-28E": [
+"workup",
+"filter_celite"
+],
+"tavo-senn-51F": [
+"prep",
+"buffer_check"
+],
+"nori-faro-33B": [
+"activation",
+"preform_imine"
+],
+"mav-zuni-44H": [
+"control",
+"ph_window"
+],
+"rusk-vex-62G": [
+"quench",
+"basic_quench"
+],
+"tavo-miko-14A": [
+"workup",
+"resin_wash"
+],
+"kell-orv-85I": [
+"prep",
+"dry_glass"
+],
+"kell-miko-33H": [
+"activation",
+"preactivate_oxidant"
+],
+"zuni-faro-44D": [
+"order",
+"oxidant_portionwise"
+],
+"lumo-bex-47E": [
+"control",
+"dark_hold"
+],
+"tavo-nori-55B": [
+"quench",
+"acidic_quench"
+],
+"tavo-prax-49H": [
+"workup",
+"direct_concentrate"
+],
+"talin-mav-12D": [
+"prep",
+"no_extra_prep"
+],
+"senn-cim-12B": [
+"activation",
+"no_activation"
+],
+"senn-senn-42H": [
+"order",
+"base_first"
+],
+"tavo-nori-51C": [
+"quench",
+"brine_split"
+],
+"nori-miko-46I": [
+"workup",
+"organic_extract"
+],
+"miko-drel-63F": [
+"activation",
+"prewet_resin"
+],
+"drel-mav-85H": [
+"order",
+"base_last"
+],
+"lumo-cim-20H": [
+"control",
+"vented_hold"
+],
+"drel-faro-35C": [
+"quench",
+"water_slow"
+],
+"tavo-miko-75D": [
+"workup",
+"resin_wash"
+],
+"kell-orv-15B": [
+"prep",
+"dry_glass"
+],
+"senn-senn-29I": [
+"order",
+"base_first"
+],
+"talin-vex-18H": [
+"control",
+"ambient_slow"
+],
+"tavo-nori-64D": [
+"quench",
+"brine_split"
+],
+"rusk-prax-46C": [
+"prep",
+"shield_light"
+],
+"talin-tavo-39A": [
+"activation",
+"activate_acyl"
+],
+"sava-cim-35I": [
+"order",
+"substrate_slow"
+],
+"lumo-bex-47I": [
+"control",
+"dark_hold"
+],
+"tavo-nori-73C": [
+"quench",
+"acidic_quench"
+],
+"mav-kell-26B": [
+"workup",
+"solvent_swap"
+],
+"bex-rusk-89A": [
+"prep",
+"cool_salt"
+],
+"sava-cim-74C": [
+"order",
+"substrate_slow"
+],
+"zuni-senn-43C": [
+"control",
+"ice_slow"
+],
+"zuni-nori-78D": [
+"quench",
+"no_quench"
+],
+"mav-kell-24G": [
+"workup",
+"solvent_swap"
+],
+"faro-kell-10A": [
+"prep",
+"degas"
+],
+"zuni-faro-40I": [
+"order",
+"oxidant_portionwise"
+],
+"tavo-nori-56E": [
+"quench",
+"acidic_quench"
+],
+"nori-miko-53I": [
+"workup",
+"organic_extract"
+],
+"talin-mav-65A": [
+"prep",
+"no_extra_prep"
+],
+"miko-drel-80I": [
+"activation",
+"prewet_resin"
+],
+"prax-talin-30B": [
+"order",
+"catalyst_last"
+],
+"lumo-sava-33D": [
+"control",
+"warm_hold"
+],
+"bex-rusk-44F": [
+"prep",
+"cool_salt"
+],
+"drel-faro-79G": [
+"quench",
+"water_slow"
+],
+"faro-kell-44D": [
+"prep",
+"degas"
+],
+"tavo-prax-89B": [
+"activation",
+"prime_catalyst"
+],
+"lumo-sava-44D": [
+"workup",
+"filter_celite"
+],
+"talin-tavo-65I": [
+"activation",
+"activate_acyl"
+],
+"drel-mav-86C": [
+"order",
+"base_last"
+],
+"zuni-senn-65B": [
+"control",
+"ice_slow"
+],
+"nori-miko-69I": [
+"workup",
+"organic_extract"
+],
+"talin-vex-34B": [
+"control",
+"ambient_slow"
+],
+"lumo-nori-87H": [
+"order",
+"nucleophile_slow"
+],
+"vex-talin-78E": [
+"quench",
+"alcohol_quench"
+],
+"tavo-prax-16A": [
+"workup",
+"direct_concentrate"
+],
+"kell-miko-87E": [
+"activation",
+"preactivate_oxidant"
+],
+"zuni-faro-69D": [
+"order",
+"oxidant_portionwise"
+],
+"lumo-sava-69E": [
+"workup",
+"filter_celite"
+],
+"tavo-senn-73H": [
+"prep",
+"buffer_check"
+],
+"kell-miko-33F": [
+"activation",
+"preactivate_oxidant"
+],
+"nori-faro-51G": [
+"activation",
+"preform_imine"
+],
+"lumo-nori-75I": [
+"order",
+"nucleophile_slow"
+],
+"tavo-prax-86H": [
+"workup",
+"direct_concentrate"
+],
+"rusk-vex-35D": [
+"quench",
+"basic_quench"
+],
+"mav-zuni-55B": [
+"control",
+"ph_window"
+],
+"senn-senn-39A": [
+"order",
+"base_first"
+],
+"tavo-nori-16E": [
+"quench",
+"brine_split"
+],
+"senn-cim-52D": [
+"activation",
+"no_activation"
+],
+"mav-zuni-26B": [
+"control",
+"ph_window"
+],
+"senn-cim-86G": [
+"activation",
+"no_activation"
+],
+"talin-tavo-82F": [
+"activation",
+"activate_acyl"
+],
+"prax-talin-13C": [
+"order",
+"catalyst_last"
+],
+"tavo-senn-35G": [
+"prep",
+"buffer_check"
+],
+"orv-cim-13H": [
+"workup",
+"aqueous_neutralize"
+],
+"zuni-senn-47B": [
+"control",
+"ice_slow"
+],
+"tavo-miko-15B": [
+"workup",
+"resin_wash"
+],
+"rusk-prax-16G": [
+"prep",
+"shield_light"
+],
+"lumo-bex-13A": [
+"control",
+"dark_hold"
+],
+"rusk-vex-74I": [
+"quench",
+"basic_quench"
+],
+"orv-cim-79E": [
+"workup",
+"aqueous_neutralize"
+],
+"tavo-prax-44A": [
+"activation",
+"prime_catalyst"
+],
+"lumo-sava-80A": [
+"control",
+"warm_hold"
+],
+"rusk-prax-55A": [
+"prep",
+"shield_light"
+],
+"lumo-cim-89D": [
+"control",
+"vented_hold"
+],
+"vex-talin-75A": [
+"quench",
+"alcohol_quench"
+],
+"miko-drel-34D": [
+"activation",
+"prewet_resin"
+],
+"zuni-nori-80B": [
+"quench",
+"no_quench"
+],
+"lumo-nori-65F": [
+"order",
+"nucleophile_slow"
+],
+"bex-rusk-56E": [
+"prep",
+"cool_salt"
+],
+"mav-kell-30H": [
+"workup",
+"solvent_swap"
+],
+"drel-mav-40C": [
+"order",
+"base_last"
+],
+"lumo-cim-68A": [
+"control",
+"vented_hold"
+],
+"drel-faro-78G": [
+"quench",
+"water_slow"
+],
+"talin-mav-12E": [
+"prep",
+"no_extra_prep"
+]
+}
