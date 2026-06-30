@@ -28,6 +28,16 @@ rare/shifted/catalyst-positive rows; balanced-acc + macro-F1 penalize majority-o
 - Decode tuned on OOF to the composite: prior-adjust alpha (temp/time balanced-acc), catalyst
   threshold (macro-F1), secondary-solvent threshold, NONE bias.
 
+## Public score reconciliation
+- Submitted n-gram MLP scored **0.3879** public (just above AI baseline); my proxy CV was 0.422.
+  The gap is the proxy over-estimating the hidden Shift/Rare tracks (my "long-reaction" proxy is
+  easier than the real source-shift). Fix = a representation that generalizes better to the shift.
+- ChemBERTa-77M fine-tune: tried, **underperformed (composite 0.34)** — task is reagent-driven,
+  fingerprints capture it directly; deep structure didn't help.
+- **Morgan + n-gram MLP ensemble (50/50): OOF composite 0.447** (Morgan 0.430, n-gram 0.422).
+  Morgan is structure-aware/source-invariant -> better for the shift track. Shipped as the final.
+  solution.py pip-installs rdkit at runtime (internet available) with an n-gram-only fallback.
+
 ## Experiments (5-fold OOF proxy composite)
 - v1 sigmoid-only multilabel solvent:           composite 0.380 (SolvF1 0.204, top-1 0.206)
 - v2 + softmax primary-solvent head:            composite 0.430 (SolvF1 0.328, top-1 0.325)
