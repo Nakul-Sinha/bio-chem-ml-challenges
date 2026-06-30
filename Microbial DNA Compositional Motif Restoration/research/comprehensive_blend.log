@@ -1,0 +1,4 @@
+built [12s]
+rep0 BEST=0.1687 w(gcond,cond,pmi,gpool)=(3, 0.5, 0.5, 0)
+  refs: pmi+cond 0.1669  gcond 0.1653  gcond+pmi+cond 0.1674
+FAITHFUL CV = 0.1670 +- 0.0022 weights=(3, 0.5, 0.5, 0)
