@@ -4,12 +4,10 @@ import numpy as np, pandas as pd
 
 VOCAB=1024
 MASK_TOKEN="?"
-WG=3.0
-WC=0.5
-WPMI=0.5
-A_GC=0.05
+POWER=3.0
+GAMMA=0.5
+COOC_W=0.10
 A_CO=0.1
-A_GP=0.3
 
 def find_data_dir():
     here=Path(__file__).resolve().parent
@@ -25,51 +23,46 @@ def main():
     train=pd.read_csv(DATA/"train.csv"); test=pd.read_csv(DATA/"test.csv")
     train_ks=[toks(s) for s in train["kmer_seq"]]
 
-    cooc=np.zeros((VOCAB+1,VOCAB+1)); tokcnt=np.zeros(VOCAB+1); glob=np.zeros(VOCAB+1)
+    df=np.zeros(VOCAB+1); cooc=np.zeros((VOCAB+1,VOCAB+1)); tokc=np.zeros(VOCAB+1)
     for k in train_ks:
+        for t in set(k): df[t]+=1
         for a in k:
-            tokcnt[a]+=1; glob[a]+=1
+            tokc[a]+=1
             for b in k:
                 if a!=b: cooc[a,b]+=1
-    logcond=np.log((cooc+A_CO)/(tokcnt[:,None]+A_CO*VOCAB))
-    logglob=np.log((glob+0.5)/(glob.sum()+0.5*VOCAB))
+    IDF=np.log((len(train_ks)+1)/(df+1))+1.0
+    LOGCOND=np.log((cooc+A_CO)/(tokc[:,None]+A_CO*VOCAB))
 
     test_gc=[toks(s) for s in test["genome_context"]]
-    test_vis=[]
-    for s in test["masked_kmer_seq"]:
-        test_vis.append([int(x) for x in str(s).split() if x!=MASK_TOKEN])
+    test_vis=[[int(x) for x in str(s).split() if x!=MASK_TOKEN] for s in test["masked_kmer_seq"]]
     test_keys=[genome_key(g) for g in test_gc]
-    mask_index=test["mask_index"].astype(int).tolist()
 
     by=collections.defaultdict(list)
     for i,gk in enumerate(test_keys): by[gk].append(i)
-    gcooc={}; gtot={}
-    for gk,idxs in by.items():
-        C=np.zeros((VOCAB+1,VOCAB+1)); T=np.zeros(VOCAB+1)
-        for i in idxs:
-            vis=test_vis[i]
-            for t in vis: T[t]+=1
-            for a in vis:
-                for b in vis:
-                    if a!=b: C[a,b]+=1
-        gcooc[gk]=C; gtot[gk]=T
 
-    colidx=np.arange(VOCAB); preds=[]
-    for i in range(len(test)):
-        gk=test_keys[i]; vis=test_vis[i]
-        gc=gcooc[gk][vis].sum(0) if vis else np.zeros(VOCAB+1)
-        gcond=np.log((gc[1:]+A_GC)/(gc.sum()+A_GC*VOCAB))
-        cond=logcond[vis].mean(0)[1:] if vis else np.zeros(VOCAB)
-        T=gtot[gk]; gpool=np.log((T[1:]+A_GP)/(T.sum()+A_GP*VOCAB))
-        pmi=gpool-logglob[1:]
-        S=WG*gcond+WC*cond+WPMI*pmi
-        for v in vis:
-            if 1<=v<=VOCAB: S[v-1]=-1e9
-        top=np.argpartition(-S,10)[:10]; top=top[np.argsort(-S[top])]
-        preds.append(" ".join(str(int(t)+1) for t in top))
+    preds=[None]*len(test); colidx=np.arange(VOCAB)
+    for gk,idxs in by.items():
+        m=len(idxs)
+        Vb=np.zeros((m,VOCAB+1),dtype=np.float32)
+        for a,i in enumerate(idxs):
+            for t in test_vis[i]: Vb[a,t]=1.0
+        Vidf=Vb*IDF; sim=Vidf@Vb.T; np.fill_diagonal(sim,0.0); simp=sim**POWER
+        cf=simp@Vb
+        sibfrac=Vb.sum(0)/m
+        disc=cf/((sibfrac+0.05)**GAMMA)
+        for a,i in enumerate(idxs):
+            vis=test_vis[i]
+            co=LOGCOND[vis].mean(0) if vis else np.zeros(VOCAB+1)
+            S=np.log1p(disc[a])+COOC_W*co
+            S[0]=-1e9
+            for v in vis:
+                if 1<=v<=VOCAB: S[v]=-1e9
+            s=S[1:]
+            top=np.argpartition(-s,10)[:10]; top=top[np.argsort(-s[top])]
+            preds[i]=" ".join(str(int(t)+1) for t in top)
     sub=pd.DataFrame({"id":test["id"],"predicted_kmer_ids":preds})
     assert list(sub.columns)==["id","predicted_kmer_ids"]
-    assert len(sub)==len(test) and sub["id"].is_unique
+    assert len(sub)==len(test) and sub["id"].is_unique and not sub.isna().any().any()
     for s in sub["predicted_kmer_ids"]:
         ids=s.split(); assert 1<=len(ids)<=10 and len(ids)==len(set(ids))
         assert all(1<=int(x)<=VOCAB for x in ids)

@@ -1,0 +1,6 @@
+disc-CF only: [np.float64(0.2121), np.float64(0.2188)]
+cf+gcond: [np.float64(0.1772), np.float64(0.187)]
+cf+gcond+cooc: [np.float64(0.1728), np.float64(0.1815)]
+cf+0.5gcond: [np.float64(0.1853), np.float64(0.1947)]
+cf+0.5gcond+0.3cooc: [np.float64(0.1788), np.float64(0.1868)]
+0.7cf+0.5gcond+0.3cooc: [np.float64(0.1741), np.float64(0.1826)]
