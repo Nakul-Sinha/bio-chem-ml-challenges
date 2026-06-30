@@ -1,0 +1,14 @@
+2026-06-30 17:56:17.865104: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+C:\Users\nakul\AppData\Local\Programs\Python\Python312\Lib\site-packages\keras\src\export\tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, "object"):
+data dir: G:\Datacurve\eris2\CPU-dGPU-ML-chals\Reaction Protocol Silent-Edit Repair\dataset | device: cuda
+augmented train pairs: 11732
+  epoch 1/8 loss 0.7949 [212s]
+  epoch 2/8 loss 0.1069 [412s]
+  epoch 3/8 loss 0.0789 [613s]
+  epoch 4/8 loss 0.0693 [814s]
+  epoch 5/8 loss 0.0654 [1018s]
+  epoch 6/8 loss 0.0630 [1230s]
+  epoch 7/8 loss 0.0612 [1435s]
+  epoch 8/8 loss 0.0594 [1677s]
+wrote submission.csv & working/submission.csv: (524, 2)
