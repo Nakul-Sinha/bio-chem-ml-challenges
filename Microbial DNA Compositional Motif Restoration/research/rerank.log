@@ -1,0 +1,9 @@
+features (455100, 12) candidate-recall(gold in top60)=0.6944 [11s]
+fold0 done [32s]
+fold1 done [52s]
+fold2 done [74s]
+fold3 done [97s]
+fold4 done [117s]
+
+RERANKER CV MRR@10 = 0.2786
+feature importance: {'cf': np.int32(1167), 'cfrank': np.int32(786), 'gcond': np.int32(1094), 'cooc': np.int32(1649), 'gcmem': np.int32(47), 'idf': np.int32(1262), 'globlog': np.int32(361), 'nsib': np.int32(730), 'posdiff': np.int32(1051), 'p': np.int32(250), 'm': np.int32(494), 'cfscore': np.int32(109)}

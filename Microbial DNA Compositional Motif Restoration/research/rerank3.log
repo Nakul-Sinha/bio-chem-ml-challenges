@@ -1,0 +1,5 @@
+features (606800, 15) recall@80=0.7357 [23s]
+reranker built [179s]
+RAW reranker CV MRR=0.2056  test-calibrated=0.2138
+BEST ensemble test-calibrated=0.2167 (w=0.5, raw=0.2094)
+importance: {'cf': np.int32(1088), 'cfrank': np.int32(912), 'gcond': np.int32(829), 'gcrank': np.int32(804), 'cooc': np.int32(1072), 'coocnb': np.int32(1041), 'gcmem': np.int32(42), 'idf': np.int32(666), 'glob': np.int32(600), 'nsib': np.int32(613), 'sibfrac': np.int32(829), 'posdiff': np.int32(1059), 'p': np.int32(278), 'm': np.int32(480), 'cfscore': np.int32(187)}
