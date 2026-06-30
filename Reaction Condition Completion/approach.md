@@ -7,13 +7,17 @@ A single **multi-task MLP** on RDKit reaction fingerprints predicts all four con
 (solvent set, temperature bin, time bin, catalyst presence) from the reaction SMILES. The final
 submission averages a 3-seed ensemble and applies a decode tuned directly to the composite metric.
 
-## Features
-**rdkit-free** (the grading environment has no rdkit): hashed character n-grams (n=2..5, 2048
-buckets via crc32) of the reactant SMILES, the product SMILES, and their difference, plus 49
-string descriptors (atom/charge/bond counts and presence flags for common reagents: metals,
-carbonate/hydroxide bases, amine bases, phosphines, Boc, azide, tosyl, …). A Morgan-fingerprint
-version scored composite 0.430; this rdkit-free version scores 0.422 — a negligible 0.008 drop —
-while running anywhere with only numpy/torch. EDA showed
+## Features (ensemble of two views)
+Two featurizations, each fed to its own MLP and **blended 50/50**:
+1. **Morgan fingerprints** (radius 2, 2048 bits) of reactants/products/difference — structure-aware,
+   source-invariant (helps the hidden distribution-shift track). The grading env lacks rdkit but
+   has internet, so `solution.py` `pip install`s rdkit at runtime (with an n-gram-only fallback).
+2. **Hashed character n-grams** (n=2..5, crc32, 2048 buckets) of the SMILES — rdkit-free.
+Both add 49 string descriptors (atom/charge/bond counts + presence flags for common reagents:
+metals, carbonate/hydroxide bases, amine bases, phosphines, Boc, azide, tosyl, …).
+**5-fold OOF composite: Morgan 0.430, n-gram 0.422, 50/50 ensemble 0.447.** (A fine-tuned
+ChemBERTa-77M was tried and *underperformed* at 0.34 — this task is driven by reagent presence,
+which fingerprints capture directly, not by deep structure.) EDA showed
 catalysts and solvents are essentially absent from the SMILES (metals in ~38/18000 rows; a true
 solvent appears as a reactant component in 0.8%), so every target is genuine structure→conditions
 inference; the reagents that *are* present (bases, ligands) are the key signal, captured by the
