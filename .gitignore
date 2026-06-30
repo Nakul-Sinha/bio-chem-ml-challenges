@@ -4,3 +4,7 @@ Reaction Protocol Silent-Edit Repair/dataset/
 
 __pycache__/
 *.pyc
+
+# regenerable artifacts
+**/research/cache/
+*.npz
