@@ -3,12 +3,15 @@ from pathlib import Path
 import numpy as np, pandas as pd, torch, torch.nn as nn
 
 SEED=42
-N_SEEDS=3
+N_SEEDS_MLP=3
+N_SEEDS_CNN=2
 EPOCHS=14
 BS=256
 LR=1e-3
 NBITS=2048
 NGRAMS=(2,3,4,5)
+MAXLEN=160
+W_MLP=0.5
 A_T=0.3
 A_TM=0.0
 CAT_THR=0.5
@@ -39,7 +42,7 @@ def desc(smi):
     for ch in ["Cl","Br","F","N","O","S","P","B","c","=","#","+","-","[","@","/"]: f.append(str(smi).count(ch))
     for k,pat in REAGENT_PATS.items(): f.append(left.count(pat))
     return np.array(f,dtype=np.float32)
-def featurize(df):
+def featurize_ng(df):
     R=np.zeros((len(df),NBITS),dtype=np.float32); P=np.zeros((len(df),NBITS),dtype=np.float32); Dd=[]
     for i,smi in enumerate(df["reaction_smiles"].astype(str)):
         left,_,right=smi.partition(">>"); R[i]=ngram_vec(left); P[i]=ngram_vec(right); Dd.append(desc(smi))
@@ -47,14 +50,21 @@ def featurize(df):
 def parse_solv(s):
     s=str(s); return [] if s in ("nan","NONE","") else s.split("|")
 
-class Net(nn.Module):
+class MLP(nn.Module):
     def __init__(s,d,ns):
         super().__init__()
-        s.bb=nn.Sequential(nn.Linear(d,1024),nn.BatchNorm1d(1024),nn.ReLU(),nn.Dropout(0.4),
-                           nn.Linear(1024,512),nn.BatchNorm1d(512),nn.ReLU(),nn.Dropout(0.3))
+        s.bb=nn.Sequential(nn.Linear(d,1024),nn.BatchNorm1d(1024),nn.ReLU(),nn.Dropout(0.4),nn.Linear(1024,512),nn.BatchNorm1d(512),nn.ReLU(),nn.Dropout(0.3))
         s.hs=nn.Linear(512,ns); s.hp=nn.Linear(512,ns+1); s.ht=nn.Linear(512,5); s.htm=nn.Linear(512,6); s.hc=nn.Linear(512,1)
     def forward(s,x):
         z=s.bb(x); return s.hs(z),s.hp(z),s.ht(z),s.htm(z),s.hc(z).squeeze(-1)
+class CNN(nn.Module):
+    def __init__(s,vc,ns):
+        super().__init__(); s.emb=nn.Embedding(vc,64,padding_idx=0)
+        s.convs=nn.ModuleList([nn.Conv1d(64,96,k,padding=k//2) for k in (3,5)]); s.drop=nn.Dropout(0.3); h=96*2
+        s.hs=nn.Linear(h,ns); s.hp=nn.Linear(h,ns+1); s.ht=nn.Linear(h,5); s.htm=nn.Linear(h,6); s.hc=nn.Linear(h,1)
+    def forward(s,x):
+        e=s.emb(x).transpose(1,2); z=torch.cat([torch.relu(c(e)).max(2)[0] for c in s.convs],1); z=s.drop(z)
+        return s.hs(z),s.hp(z),s.ht(z),s.htm(z),s.hc(z).squeeze(-1)
 
 def main():
     np.random.seed(SEED); torch.manual_seed(SEED)
@@ -78,37 +88,49 @@ def main():
     prior_t=np.bincount(Ytemp,minlength=5)/len(Ytemp); prior_tm=np.bincount(Ytime,minlength=6)/len(Ytime)
 
     print("featurizing..."); t0=time.time()
-    Xtr=featurize(train); Xte=featurize(test); print("feat done",Xtr.shape,f"[{time.time()-t0:.0f}s]")
-    nd=49; mu=Xtr[:,-nd:].mean(0); sd=Xtr[:,-nd:].std(0)+1e-6
-    Xtr[:,-nd:]=(Xtr[:,-nd:]-mu)/sd; Xte[:,-nd:]=(Xte[:,-nd:]-mu)/sd; D=Xtr.shape[1]
+    Xtr=featurize_ng(train); Xte=featurize_ng(test)
+    nd=49; mu=Xtr[:,-nd:].mean(0); sd=Xtr[:,-nd:].std(0)+1e-6; Xtr[:,-nd:]=(Xtr[:,-nd:]-mu)/sd; Xte[:,-nd:]=(Xte[:,-nd:]-mu)/sd; D=Xtr.shape[1]
+    chars=sorted(set("".join(train["reaction_smiles"].astype(str))+"".join(test["reaction_smiles"].astype(str))))
+    C2I={c:i+2 for i,c in enumerate(chars)}; VC=len(C2I)+2
+    def seqs(df):
+        A=np.zeros((len(df),MAXLEN),dtype=np.int64)
+        for i,s in enumerate(df["reaction_smiles"].astype(str)):
+            for j,c in enumerate(s[:MAXLEN]): A[i,j]=C2I.get(c,1)
+        return A
+    Sqtr=seqs(train); Sqte=seqs(test)
+    print("feat done",f"[{time.time()-t0:.0f}s]")
 
-    def train_one(seed):
+    def train_one(kind,seed):
         torch.manual_seed(seed); np.random.seed(seed)
-        Xa=torch.tensor(Xtr); yt=torch.tensor(Ytemp); ytm=torch.tensor(Ytime); yc=torch.tensor(Ycat); ysv=torch.tensor(Ysolv); yp=torch.tensor(Yprim)
-        net=Net(D,NS).to(dev); opt=torch.optim.AdamW(net.parameters(),lr=LR,weight_decay=1e-5)
-        n=len(Xtr); bce=nn.BCEWithLogitsLoss(); ce=nn.CrossEntropyLoss()
+        Xf=Xtr if kind=="mlp" else Sqtr; Xfe=Xte if kind=="mlp" else Sqte
+        net=(MLP(D,NS) if kind=="mlp" else CNN(VC,NS)).to(dev)
+        opt=torch.optim.AdamW(net.parameters(),lr=LR,weight_decay=1e-5); n=len(Xf); bce=nn.BCEWithLogitsLoss(); ce=nn.CrossEntropyLoss()
         sch=torch.optim.lr_scheduler.OneCycleLR(opt,LR,total_steps=EPOCHS*((n+BS-1)//BS))
+        Xa=torch.tensor(Xf); yt=torch.tensor(Ytemp); ytm=torch.tensor(Ytime); yc=torch.tensor(Ycat); ysv=torch.tensor(Ysolv); yp=torch.tensor(Yprim)
         for ep in range(EPOCHS):
             net.train(); perm=torch.randperm(n)
             for i in range(0,n,BS):
                 idx=perm[i:i+BS]; xb=Xa[idx].to(dev); ls,lp,lt,ltm,lc=net(xb)
                 loss=bce(ls,ysv[idx].to(dev))+ce(lp,yp[idx].to(dev))+ce(lt,yt[idx].to(dev))+ce(ltm,ytm[idx].to(dev))+bce(lc,yc[idx].to(dev))
                 opt.zero_grad(); loss.backward(); opt.step(); sch.step()
-        net.eval()
+        net.eval(); o={"solv":[],"prim":[],"temp":[],"time":[],"cat":[]}; Xb=torch.tensor(Xfe)
         with torch.no_grad():
-            o={"solv":[],"prim":[],"temp":[],"time":[],"cat":[]}; Xb=torch.tensor(Xte)
-            for i in range(0,len(Xte),1024):
+            for i in range(0,len(Xfe),1024):
                 xb=Xb[i:i+1024].to(dev); ls,lp,lt,ltm,lc=net(xb)
                 o["solv"].append(torch.sigmoid(ls).cpu().numpy()); o["prim"].append(torch.softmax(lp,1).cpu().numpy())
                 o["temp"].append(torch.softmax(lt,1).cpu().numpy()); o["time"].append(torch.softmax(ltm,1).cpu().numpy()); o["cat"].append(torch.sigmoid(lc).cpu().numpy())
         return {k:np.concatenate(v) for k,v in o.items()}
 
-    acc={k:0 for k in ["solv","prim","temp","time","cat"]}
-    for s in range(N_SEEDS):
-        p=train_one(SEED+s)
-        for k in acc: acc[k]=acc[k]+p[k]/N_SEEDS
-        print(f"seed {s} done [{time.time()-t0:.0f}s]")
-    p=acc
+    def avg(kind,nseed):
+        a={k:0 for k in ["solv","prim","temp","time","cat"]}
+        for s in range(nseed):
+            pr=train_one(kind,SEED+s)
+            for k in a: a[k]=a[k]+pr[k]/nseed
+            print(f"{kind} seed {s} done [{time.time()-t0:.0f}s]")
+        return a
+    pm=avg("mlp",N_SEEDS_MLP); pc=avg("cnn",N_SEEDS_CNN)
+    p={k:W_MLP*pm[k]+(1-W_MLP)*pc[k] for k in pm}
+
     tp=(p["temp"]/(prior_t**A_T)).argmax(1); tmp=(p["time"]/(prior_tm**A_TM)).argmax(1)
     cat=(p["cat"]>CAT_THR).astype(int); pr=p["prim"].copy(); pr[:,0]*=NONE_BOOST; pa=pr.argmax(1); solv=[]
     for i in range(len(pa)):
