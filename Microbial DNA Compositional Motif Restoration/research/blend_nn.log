@@ -1,0 +1,9 @@
+fold0 components built [52s]
+fold1 components built [95s]
+fold2 components built [138s]
+fold3 components built [183s]
+fold4 components built [227s]
+rows (91020, 1024)
+
+BEST blend CV MRR@10=1.0000 (wpmi,wcond,wnn)=(0, 0, 0)
+pmi+cond only: 0.1693  nn only: 0.1164
