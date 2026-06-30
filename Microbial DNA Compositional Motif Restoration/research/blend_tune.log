@@ -1,0 +1,6 @@
+BEST CV MRR@10=0.1745 (wprof,wpmi,wcond,wpos,wgc)=(0, 1, 1, 0, 0)
+  fold0=0.1264
+  fold1=0.1481
+  fold2=0.1869
+  fold3=0.1512
+  fold4=0.2600

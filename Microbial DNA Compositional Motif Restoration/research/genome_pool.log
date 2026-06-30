@@ -1,0 +1,9 @@
+fold0 best: (0.10466121095235183, (0, 2, 0, 3))
+fold0 MRR@10=0.1047
+fold1 MRR@10=0.1073
+fold2 MRR@10=0.1422
+fold3 MRR@10=0.1138
+fold4 MRR@10=0.2325
+
+CV MRR@10 (genome-pool+cooc+pos+gc) = 0.1401 weights=(0, 2, 0, 3)
+pure pool only: 0.1435

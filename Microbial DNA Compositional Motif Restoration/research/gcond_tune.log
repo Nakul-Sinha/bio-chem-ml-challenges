@@ -1,0 +1,6 @@
+components(rep0) built [12s] rows=7585
+rep0 BEST MRR@10=0.1667 (wgcond,wcond,wgpool)=(4, 0.25, 0)
+gcond only rep0: 0.1653
+  rep200 MRR=0.1681 [39s]
+  rep300 MRR=0.1643 [52s]
+FAITHFUL CV MRR@10 = 0.1664 +- 0.0016 weights=(4, 0.25, 0)

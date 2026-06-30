@@ -1,0 +1,8 @@
+gpos only: 0.1018
+gpool only: 0.1373
+gcond only: 0.2257
+cond only: 0.1247
+gpos+cond: 0.1293
+gpos+gcond: 0.1642
+gpos+gpool+cond: 0.1386
+gpos+gpool+gcond+cond: 0.1613
