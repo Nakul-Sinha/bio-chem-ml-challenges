@@ -1,0 +1,22 @@
+2026-06-30 17:29:33.125642: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+C:\Users\nakul\AppData\Local\Programs\Python\Python312\Lib\site-packages\keras\src\export\tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, "object"):
+{'model': 't5-small', 'epochs': 8, 'K': 6, 'bs': 16, 'lr': 0.0003, 'msrc': 192, 'mtgt': 48, 'val_frac': 0.15, 'seed': 42, 'val_reps': 3, 'limit': 0}
+train rows 1428 val rows 248
+augmented train pairs: 9996
+  epoch 1/8 loss 0.8607  [178s]
+  epoch 2/8 loss 0.1131  [357s]
+  epoch 3/8 loss 0.0842  [531s]
+  epoch 4/8 loss 0.0722  [712s]
+  epoch 5/8 loss 0.0669  [884s]
+  epoch 6/8 loss 0.0640  [1050s]
+  epoch 7/8 loss 0.0616  [1223s]
+  epoch 8/8 loss 0.0603  [1392s]
+
+=== CV weighted score: 0.7259 (n=744) ===
+   prep       w=2.2  acc=0.733
+   activation w=0.85 acc=0.844
+   order      w=0.6  acc=0.878
+   control    w=3.0  acc=0.755
+   quench     w=4.0  acc=0.673
+   workup     w=0.25 acc=0.387
