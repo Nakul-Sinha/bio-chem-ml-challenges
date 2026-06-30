@@ -8,9 +8,12 @@ A single **multi-task MLP** on RDKit reaction fingerprints predicts all four con
 submission averages a 3-seed ensemble and applies a decode tuned directly to the composite metric.
 
 ## Features
-Morgan fingerprints (radius 2, 2048 bits) of the combined reactants, the products, and their
-difference, plus 49 descriptors (atom/charge/bond counts and presence flags for common reagents:
-metals, carbonate/hydroxide bases, amine bases, phosphines, Boc, azide, tosyl, …). EDA showed
+**rdkit-free** (the grading environment has no rdkit): hashed character n-grams (n=2..5, 2048
+buckets via crc32) of the reactant SMILES, the product SMILES, and their difference, plus 49
+string descriptors (atom/charge/bond counts and presence flags for common reagents: metals,
+carbonate/hydroxide bases, amine bases, phosphines, Boc, azide, tosyl, …). A Morgan-fingerprint
+version scored composite 0.430; this rdkit-free version scores 0.422 — a negligible 0.008 drop —
+while running anywhere with only numpy/torch. EDA showed
 catalysts and solvents are essentially absent from the SMILES (metals in ~38/18000 rows; a true
 solvent appears as a reactant component in 0.8%), so every target is genuine structure→conditions
 inference; the reagents that *are* present (bases, ligands) are the key signal, captured by the
