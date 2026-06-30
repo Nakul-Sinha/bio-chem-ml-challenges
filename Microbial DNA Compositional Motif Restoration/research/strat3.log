@@ -1,0 +1,23 @@
+power=4 baseline (gamma=0): [np.float64(0.208), np.float64(0.2154)]
+
+gamma sweep (power=4): raw / test-calibrated
+  gamma=0.3: raw=0.2105 cal=0.2181
+  gamma=0.5: raw=0.2092 cal=0.2150
+  gamma=0.8: raw=0.1909 cal=0.1938
+  gamma=1.0: raw=0.1719 cal=0.1727
+  gamma=1.5: raw=0.0742 cal=0.0696
+  gamma=2.0: raw=0.0453 cal=0.0425
+
+power x gamma (cal):
+  power=3 gamma=0.5: cal=0.2184 (raw 0.2117)
+  power=3 gamma=0.8: cal=0.2045 (raw 0.2016)
+  power=3 gamma=1.0: cal=0.1838 (raw 0.1825)
+  power=3 gamma=1.5: cal=0.0714 (raw 0.0755)
+  power=4 gamma=0.5: cal=0.2150 (raw 0.2092)
+  power=4 gamma=0.8: cal=0.1938 (raw 0.1909)
+  power=4 gamma=1.0: cal=0.1727 (raw 0.1719)
+  power=4 gamma=1.5: cal=0.0696 (raw 0.0742)
+  power=6 gamma=0.5: cal=0.1982 (raw 0.1947)
+  power=6 gamma=0.8: cal=0.1741 (raw 0.1718)
+  power=6 gamma=1.0: cal=0.1531 (raw 0.1527)
+  power=6 gamma=1.5: cal=0.0692 (raw 0.0744)

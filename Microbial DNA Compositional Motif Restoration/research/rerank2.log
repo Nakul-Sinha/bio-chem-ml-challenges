@@ -1,0 +1,9 @@
+features (455100, 12) recall@60=0.6940 [19s]
+fold0 [38s]
+fold1 [56s]
+fold2 [78s]
+fold3 [99s]
+fold4 [120s]
+
+HONEST RERANKER CV MRR@10 = 0.2042
+importance: {'cf': np.int32(1274), 'cfrank': np.int32(958), 'gcond': np.int32(1019), 'cooc': np.int32(1279), 'gcmem': np.int32(48), 'idf': np.int32(741), 'globlog': np.int32(534), 'nsib': np.int32(907), 'posdiff': np.int32(1304), 'p': np.int32(299), 'm': np.int32(513), 'cfscore': np.int32(124)}

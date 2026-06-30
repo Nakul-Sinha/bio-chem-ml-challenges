@@ -1,0 +1,7 @@
+power=0.5: MRR@10=0.1578 [18s]
+power=1: MRR@10=0.1672 [35s]
+power=2: MRR@10=0.1811 [53s]
+power=3: MRR@10=0.1970 [70s]
+power=4: MRR@10=0.2079 [88s]
+--- with position term ---
+pos_w=0.5 delta2: MRR@10=0.1831 [118s]
