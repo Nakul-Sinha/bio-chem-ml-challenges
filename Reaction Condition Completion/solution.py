@@ -1,10 +1,6 @@
-import os, sys, time, collections
+import os, sys, time, collections, zlib
 from pathlib import Path
 import numpy as np, pandas as pd, torch, torch.nn as nn
-from rdkit import Chem
-from rdkit.Chem import AllChem, DataStructs
-from rdkit import RDLogger
-RDLogger.DisableLog('rdApp.*')
 
 SEED=42
 N_SEEDS=3
@@ -12,10 +8,10 @@ EPOCHS=14
 BS=256
 LR=1e-3
 NBITS=2048
-RAD=2
-A_T=0.7
+NGRAMS=(2,3,4,5)
+A_T=0.3
 A_TM=0.0
-CAT_THR=0.45
+CAT_THR=0.5
 SEC_THR=0.3
 NONE_BOOST=1.5
 TEMPS=["cryogenic","cold","room","warm","hot"]
@@ -33,11 +29,12 @@ REAGENT_PATS={"boron":"B","Pd":"[Pd","Cu":"[Cu","Ni":"[Ni","Pt":"[Pt","Fe":"[Fe"
  "DIPEA":"CCN(C(C)C)C(C)C","pyridine":"c1ccncc1","TFA":"OC(=O)C(F)(F)F","acid_Cl":"C(=O)Cl",
  "azide":"[N-]=[N+]=[N-]","BOC":"OC(=O)","phosphine":"P(c1ccccc1)","fluoride":"[F-]",
  "tosyl":"S(=O)(=O)","nitro":"[N+](=O)[O-]"}
-def morgan(smi):
-    m=Chem.MolFromSmiles(smi) if smi else None
-    if m is None: return np.zeros(NBITS,dtype=np.float32)
-    fp=AllChem.GetMorganFingerprintAsBitVect(m,RAD,nBits=NBITS)
-    a=np.zeros(NBITS,dtype=np.float32); DataStructs.ConvertToNumpyArray(fp,a); return a
+def ngram_vec(s):
+    v=np.zeros(NBITS,dtype=np.float32); s=str(s)
+    for n in NGRAMS:
+        for i in range(len(s)-n+1):
+            v[zlib.crc32(s[i:i+n].encode())%NBITS]=1.0
+    return v
 def desc(smi):
     left,_,right=str(smi).partition(">>"); f=[left.count(".")+1,right.count(".")+1,len(left),len(right),len(str(smi))]
     for ch in ["Cl","Br","F","N","O","S","P","B","c","=","#","+","-","[","@","/"]: f.append(str(smi).count(ch))
@@ -46,7 +43,7 @@ def desc(smi):
 def featurize(df):
     R=np.zeros((len(df),NBITS),dtype=np.float32); P=np.zeros((len(df),NBITS),dtype=np.float32); Dd=[]
     for i,smi in enumerate(df["reaction_smiles"].astype(str)):
-        left,_,right=smi.partition(">>"); R[i]=morgan(left); P[i]=morgan(right); Dd.append(desc(smi))
+        left,_,right=smi.partition(">>"); R[i]=ngram_vec(left); P[i]=ngram_vec(right); Dd.append(desc(smi))
     return np.hstack([R,P,P-R,np.vstack(Dd)]).astype(np.float32)
 
 def parse_solv(s):
@@ -79,8 +76,7 @@ def main():
     def prim(l):
         if not l: return 0
         b=max(l,key=lambda x:freq.get(x,0)); return (S2I[b]+1) if b in S2I else 0
-    Ysolv=np.vstack([multihot(l) for l in solv_lists])
-    Yprim=np.array([prim(l) for l in solv_lists])
+    Ysolv=np.vstack([multihot(l) for l in solv_lists]); Yprim=np.array([prim(l) for l in solv_lists])
     Ytemp=train["temp_bin"].map({t:i for i,t in enumerate(TEMPS)}).values
     Ytime=train["time_bin"].map({t:i for i,t in enumerate(TIMES)}).values
     Ycat=train["catalyst_present"].values.astype(np.float32)
@@ -89,8 +85,7 @@ def main():
     Xtr=featurize(train); Xte=featurize(test); print("feat done",Xtr.shape,f"[{time.time()-t0:.0f}s]")
     nd=49; mu=Xtr[:,-nd:].mean(0); sd=Xtr[:,-nd:].std(0)+1e-6
     Xtr[:,-nd:]=(Xtr[:,-nd:]-mu)/sd; Xte[:,-nd:]=(Xte[:,-nd:]-mu)/sd
-    D=Xtr.shape[1]
-    prior_t=np.bincount(Ytemp,minlength=5)/len(Ytemp); prior_tm=np.bincount(Ytime,minlength=6)/len(Ytime)
+    D=Xtr.shape[1]; prior_t=np.bincount(Ytemp,minlength=5)/len(Ytemp); prior_tm=np.bincount(Ytime,minlength=6)/len(Ytime)
 
     def train_one(seed):
         torch.manual_seed(seed); np.random.seed(seed)
@@ -118,7 +113,7 @@ def main():
 
     acc={k:0 for k in ["solv","prim","temp","time","cat"]}
     for s in range(N_SEEDS):
-        p=train_one(SEED+s);
+        p=train_one(SEED+s)
         for k in acc: acc[k]=acc[k]+p[k]/N_SEEDS
         print(f"seed {s} done [{time.time()-t0:.0f}s]")
     p=acc
