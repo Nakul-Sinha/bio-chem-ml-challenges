@@ -1,0 +1,11 @@
+=== IDF overlap, power sweep ===
+idf power=3: 0.2033 [23s]
+idf power=4: 0.2102 [47s]
+idf power=6: 0.2120 [70s]
+idf power=8: 0.2102 [93s]
+idf power=10: 0.2081 [116s]
+=== IDF cosine, power sweep ===
+idf cosine power=3: 0.1980 [141s]
+idf cosine power=5: 0.2086 [165s]
+idf cosine power=8: 0.2059 [188s]
+idf cosine power=12: 0.2014 [216s]

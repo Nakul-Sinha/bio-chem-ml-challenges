@@ -1,0 +1,3 @@
+components built [12s]
+refs: CF 0.2005  gcond 0.1627  cooc 0.1215  gcboost 0.1043
+BEST=0.2005 w(cf,gcond,cooc,gcboost)=(1, 0, 0, 0) [184s]
