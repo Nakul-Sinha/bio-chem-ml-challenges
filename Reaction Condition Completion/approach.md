@@ -7,17 +7,19 @@ A single **multi-task MLP** on RDKit reaction fingerprints predicts all four con
 (solvent set, temperature bin, time bin, catalyst presence) from the reaction SMILES. The final
 submission averages a 3-seed ensemble and applies a decode tuned directly to the composite metric.
 
-## Features (rdkit-free, fully self-contained)
-Hashed character n-grams (n=2..5, crc32, 2048 buckets) of the reactant SMILES, the product SMILES,
-and their difference, plus 49 string descriptors (atom/charge/bond counts + presence flags for
-common reagents: metals, carbonate/hydroxide bases, amine bases, phosphines, Boc, azide, tosyl, …).
-**No rdkit, no internet, no subprocess** — imports only numpy/pandas/torch, so the grading runtime
-never fails on a missing/blocked dependency. 5-fold OOF composite **0.422**.
-Tried and dropped: a Morgan-fingerprint MLP (0.430) and a Morgan+n-gram ensemble (0.447) raised CV
-but required rdkit at runtime, which the grading sandbox blocked (the runtime `pip install` surfaced
-as a server error) — so they were removed in favor of a dependency-free, deterministic solution.
-A fine-tuned ChemBERTa-77M also underperformed (0.34); the task is reagent-driven, which n-grams
-capture directly. EDA showed
+## Model — torch-only ensemble (rdkit-free, fully self-contained)
+Imports only numpy/pandas/torch — **no rdkit, no internet, no subprocess**, so the grading runtime
+can't fail on a missing/blocked dependency. Two complementary views, blended 50/50:
+1. **n-gram MLP** — hashed character n-grams (n=2..5, crc32, 2048 buckets) of reactant/product/diff
+   SMILES + 49 string descriptors (reagent-presence flags etc.). OOF composite 0.422.
+2. **1-D char-CNN** — a small Conv1d (kernels 3,5) over the raw SMILES character sequence; learns
+   sequential motifs, so its errors are decorrelated from the bag-of-n-grams MLP (fp32 to avoid a
+   Conv1d/bf16 hang). Weaker alone (0.371) but lifts the ensemble.
+**5-fold OOF composite: n-gram MLP 0.422 -> n-gram + char-CNN ensemble 0.429.**
+Tried and dropped for reliability: a Morgan-fingerprint MLP (0.430) and Morgan+n-gram ensemble
+(0.447) needed rdkit at runtime, which the grading sandbox blocked (the runtime `pip install`
+surfaced as a Convex server error). A fine-tuned ChemBERTa-77M also underperformed (0.34); the task
+is reagent-driven, which the n-grams capture directly. EDA showed
 catalysts and solvents are essentially absent from the SMILES (metals in ~38/18000 rows; a true
 solvent appears as a reactant component in 0.8%), so every target is genuine structure→conditions
 inference; the reagents that *are* present (bases, ligands) are the key signal, captured by the
