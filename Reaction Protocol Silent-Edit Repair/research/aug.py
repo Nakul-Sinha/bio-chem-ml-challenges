@@ -86,7 +86,7 @@ def rand_tag(prefix, rng):
 def rand_code(rng):
     return chr(ord('A')+int(rng.integers(0,8)))+str(int(rng.integers(1000,3999)))
 
-def make_example(rec, rng, n_show=3, randomize_suffix=True):
+def make_example(rec, rng, n_show=3, randomize_suffix=True, return_show=False):
     """Build one test-style (input, target) pair from a parsed train record."""
     fam=rec["family"]; note_pfx=rec["note_pfx"]; cslot=rec["cslot"]; cpfx=rec["cpfx"]; truth=rec["truth"]
     header=rng.choice(HEADERS).format(f=fam)
@@ -113,6 +113,8 @@ def make_example(rec, rng, n_show=3, randomize_suffix=True):
     else:
         corr=""
     inp="\n".join(x for x in [header,note,corr,REQUEST] if x)
+    if return_show:
+        return inp, seq_str(truth), set(show), cslot
     return inp, seq_str(truth)
 
 def make_clean_example(rec, rng, randomize_suffix=True):
