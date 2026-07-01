@@ -1,4 +1,5 @@
 Microbial DNA Compositional Motif Restoration/dataset/
+Persistent Particle Motion Cell Classification/dataset/
 Reaction Condition Completion/dataset/
 Reaction Protocol Silent-Edit Repair/dataset/
 Spectral Route Image Classification/dataset/
@@ -9,3 +10,6 @@ __pycache__/
 # regenerable artifacts
 **/research/cache/
 *.npz
+*.npy
+*.pth
+*.pt

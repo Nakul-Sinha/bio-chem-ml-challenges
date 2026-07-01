@@ -1,0 +1,13 @@
+{
+  "id": "nakuls1nha/spectral-route-train",
+  "title": "spectral-route-train",
+  "code_file": "spectral_train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["nakuls1nha/spectral-route-ds"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
