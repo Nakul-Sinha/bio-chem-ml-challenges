@@ -31,8 +31,11 @@ T0=time.time()
 TIME_BUDGET=float(os.environ.get("PPMC_BUDGET","1600"))  # seconds; margin under 30 min
 EPOCHS=int(os.environ.get("PPMC_EPOCHS","70"))
 # blend weights (weight on CNN in log domain), tuned on nested 5-fold CV
-WX=0.80   # x-band: CNN-led (from-scratch CNN weaker -> classical earns more weight than pretrained)
-WY=0.57   # y-band: classical grid-marginal contributes subpixel precision
+# tuned by 1-D per-axis analysis on the 7-model OOF (classical & CNN make complementary
+# errors, so near-equal weight beats CNN-alone; from-scratch CNN is weak enough that
+# classical earns a large share). x-band flat over WX~0.5-0.7; y-band peaks at WY~0.5.
+WX=0.70   # x-band
+WY=0.50   # y-band
 T_GRID=0.03
 # from-scratch CNN ensemble (image-only; translation aug was validated to hurt).
 # self-timing trains as many as fit the budget.
