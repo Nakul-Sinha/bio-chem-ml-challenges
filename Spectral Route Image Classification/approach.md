@@ -42,6 +42,14 @@ AI baseline to beat: **0.5368**. Result: honest OOF Final **≈0.81** (see table
 **Shipped honest OOF Final = 0.812 (raw 0.808) — +0.275 over the 0.5368 AI baseline.**
 base+swin is chosen for the best **raw** (calibration-independent) Final and the best **Stress** — the component that matters most because test is 52% heavily degraded. Same-family pairs (base+small) and the 3-way mix scored lower; one ConvNeXt + one Swin is the most diverse pair. Calibration here is gentle (+0.004, spread across all components, anchor predictions 14%→20% — not anchor-farming), so transfer risk is low. Selection was by raw Final to avoid trusting calibration that might not cross the held-out-source shift.
 
+### Ablation — 5-backbone ensemble search (negative result, reported faithfully)
+Added **EVA-02-small** (0.45 OOF cal — MIM pretraining underfits the standard recipe) and **EfficientNetV2-S** (0.64) and searched **all 26 subsets** (mean-prob, each OOF-calibrated):
+- By **raw** Final, `base+swin` (0.8078) ties the top subset `base+small+eva+effv2` (0.8081) within noise — added diversity does **not** robustly improve the ensemble.
+- Some subsets show higher **calibrated** Final (e.g. `small+swin+eva` 0.823) but with large raw→cal gaps (raw 0.797, gap 0.026) — **calibration overfitting** the 926-row OOF that is unlikely to survive the held-out-source + acquisition shift. `base+swin`'s gap is 0.004.
+- 3–5 model ensembles also exceed the A10G <30 min wall at 5-fold.
+
+Conclusion: **`base+swin` retained** as the most robust config; the extra compute confirmed it rather than beating it.
+
 ## 7. Deliverable (`solution.py`)
 - Self-contained, **self-timing** (default budget 27 min, hard wall 30) on a single A10G: trains the locked ensemble fold-by-fold in priority order and **always emits a valid submission**, dropping later folds if the budget would be exceeded.
 - Loads pretrained weights via timm; falls back to bundled `./weights/` if offline.
