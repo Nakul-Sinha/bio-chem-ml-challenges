@@ -1,25 +1,3 @@
-"""
-Persistent Particle Motion Cell Classification (Bedload Flow) — solution.
-
-Fully compliant with the challenge rules: predictions use only image content and
-the public `horizon` column; models are trained ONLY on the provided public
-training images/labels (no pretrained/external weights, no ids/hashes/order/
-timestamps, no private files, no hardcoded rows).
-
-Pipeline (self-timing, A10G-safe, <30 min):
-  1. Classical local template matcher (training-free): for each crop-pair, fuse
-     multi-scale/multi-channel masked NCC maps of the marked target (left panel)
-     against the right panel over a plausible displacement window -> subpixel
-     (dx,dy) + a per-(dx,dy) score grid, marginalized to x/y-band probabilities.
-  2. CNN ensemble trained FROM SCRATCH on the public train images: ResNet18/34
-     (weights=None) on spatially-aligned 6-channel (left|right) input + horizon
-     scalar, with x-band(5) & y-band(4) heads. Label-exact vertical-flip
-     augmentation (y-band edges symmetric -> yb->3-yb) + vflip TTA, plus
-     photometric and small-translation augmentation for regularization.
-  3. Blend CNN probabilities (log domain) with the classical grid marginals using
-     fixed per-axis weights tuned on honest nested 5-fold CV, then quantize with
-     the published edges: motion_class = 5*y_band + x_band.
-"""
 import os, sys, time
 from pathlib import Path
 import numpy as np, pandas as pd, cv2
@@ -28,17 +6,11 @@ import torch, torch.nn as nn, torch.nn.functional as F
 import torchvision
 
 T0=time.time()
-TIME_BUDGET=float(os.environ.get("PPMC_BUDGET","1600"))  # seconds; margin under 30 min
+TIME_BUDGET=float(os.environ.get("PPMC_BUDGET","1600"))
 EPOCHS=int(os.environ.get("PPMC_EPOCHS","70"))
-# blend weights (weight on CNN in log domain), tuned on nested 5-fold CV
-# tuned by 1-D per-axis analysis on the 7-model OOF (classical & CNN make complementary
-# errors, so near-equal weight beats CNN-alone; from-scratch CNN is weak enough that
-# classical earns a large share). x-band flat over WX~0.5-0.7; y-band peaks at WY~0.5.
-WX=0.70   # x-band
-WY=0.50   # y-band
+WX=0.70
+WY=0.50
 T_GRID=0.03
-# from-scratch CNN ensemble (image-only; translation aug was validated to hurt).
-# self-timing trains as many as fit the budget.
 CONFIGS=[("resnet18",42,0),("resnet18",123,0),("resnet34",42,0),("resnet18",202,0),
          ("resnet34",99,0),("resnet18",404,0),("resnet34",303,0)]
 
@@ -54,7 +26,6 @@ def yb_of(dy): return 0 if dy<-2 else 1 if dy<0 else 2 if dy<2 else 3
 def load_pair(path):
     im=np.array(Image.open(DATA/path).convert('RGB')); return im[:,0:96],im[:,104:200]
 
-# ----------------------- classical matcher (training-free) -------------------
 _CL=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8))
 def red_mask(p):
     r,g,b=p[...,0].astype(int),p[...,1].astype(int),p[...,2].astype(int)
@@ -96,7 +67,6 @@ def classical_probs(df):
         for b in range(4): Py[i,b]=w[_yrow==b].sum()
     return Px,Py
 
-# ----------------------- CNN (from scratch) ----------------------------------
 dev='cuda' if torch.cuda.is_available() else 'cpu'
 def load6(df):
     X=np.zeros((len(df),6,96,96),np.float32)
@@ -105,7 +75,7 @@ def load6(df):
     return X
 def make_bb(name):
     m=torchvision.models.resnet34(weights=None) if name=='resnet34' else torchvision.models.resnet18(weights=None)
-    m.conv1=nn.Conv2d(6,64,7,2,3,bias=False)  # 6-ch, random init (from scratch)
+    m.conv1=nn.Conv2d(6,64,7,2,3,bias=False)
     nf=m.fc.in_features; m.fc=nn.Identity(); return m,nf
 class Net(nn.Module):
     def __init__(self,arch):
