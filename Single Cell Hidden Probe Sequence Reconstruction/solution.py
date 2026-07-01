@@ -279,7 +279,7 @@ per_model=max(0.3,(time.time()-t0)/6*110)
 def cost(m,l,x): return per_model*(5*(0.8*m+0.4*l)+(m+0.5*l+x))
 budget=max(60.0, BUDGET_S-per_model*3-60)
 EXTRA=0; base_specs=[('mlp',0,90)]
-for m,l,x in [(3,2,3),(3,1,2),(2,1,2),(2,1,0),(1,1,0),(1,0,0)]:
+for m,l,x in [(6,3,12),(5,3,9),(4,2,6),(3,2,3),(2,1,2),(1,1,0),(1,0,0)]:
     if cost(m,l,x)<=budget*0.9:
         base_specs=[('mlp',s,110) for s in range(m)]+[('lin',100+s,80) for s in range(l)]; EXTRA=x; break
 print(f"[timing] per_model~{per_model:.1f}s budget~{budget:.0f}s specs={base_specs} extra={EXTRA}", flush=True)
@@ -304,7 +304,7 @@ for kind,seed,ep in full_specs:
     if time.time()-T_START > BUDGET_S-120: break
     net=train_one(kind,np.arange(N),seed,ep)
     te_prob+=predict(net,OVte,TOTte,NZte,DMGte,CONDte,SEXte,STGte_i); nmodels+=1
-extra=3
+extra=EXTRA
 for e in range(extra):
     if time.time()-T_START > BUDGET_S-120: break
     net=train_one('mlp',np.arange(N),1000+e,110)
