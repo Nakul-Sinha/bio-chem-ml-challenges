@@ -3,7 +3,9 @@
 **Objective (optimized directly, not a proxy):**
 `Final = 0.40·MacroF1 + 0.35·BalancedAcc + 0.10·AnchorGateF1(route-aphelion vs rest) + 0.15·StressMacroF1(stress_flag=1)`
 
-AI baseline to beat: **0.5368**. Result: honest OOF Final **≈0.81** (see table) — well above.
+AI baseline to beat: **0.5368**.
+
+> **⚠️ Correction (2026-07-02): the original 0.81 OOF below was LEAKAGE-INFLATED.** Train has multiple degraded *views per source*; test is *held-out sources*. Random/stratified CV put same-source views on both sides of the fold, so the 0.81 was fantasy — the real pre-submission score was **~0.537** (≈ baseline). The pipeline was rebuilt on a **source-grouped CV** (held-out sources) + **metadata fusion** + strong regularization (mixup, stochastic depth, dropout, weight decay). Honest grouped-OOF Final is now **~0.73** (convnext_base@256 + swin_small fusion) — pending final pre-submission confirmation. Sections below marked (legacy) reflect the pre-correction reasoning and are kept for history; see `research/robust_cv.py`, `research/leakage_probe.py`, `research/finalize_fusion.py`, `research/kaggle/spectral_fusion.py`.
 
 ## 1. What the metric rewards (drives every decision)
 - **75% of the score is MacroF1 + BalancedAccuracy** → per-class balance matters far more than raw accuracy. Class imbalance (driftwood 224 → borealis 120) and the decision rule must be handled.
