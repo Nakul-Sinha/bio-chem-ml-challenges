@@ -1,6 +1,7 @@
 Microbial DNA Compositional Motif Restoration/dataset/
 Reaction Condition Completion/dataset/
 Reaction Protocol Silent-Edit Repair/dataset/
+Spectral Route Image Classification/dataset/
 
 __pycache__/
 *.pyc
