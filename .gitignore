@@ -3,6 +3,7 @@ Persistent Particle Motion Cell Classification/dataset/
 Reaction Condition Completion/dataset/
 Reaction Protocol Silent-Edit Repair/dataset/
 Spectral Route Image Classification/dataset/
+Single Cell Hidden Probe Sequence Reconstruction/dataset/
 
 __pycache__/
 *.pyc
@@ -13,3 +14,4 @@ __pycache__/
 *.npy
 *.pth
 *.pt
+**/research/*.log
