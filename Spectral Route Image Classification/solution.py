@@ -1,12 +1,3 @@
-#!/usr/bin/env python
-"""Spectral Route Image Classification — self-contained, self-timing solution.
-Runs on a single A10G (24GB) in <30 min. Fine-tunes pretrained backbone(s) with
-degradation-simulating augmentation, hflip-TTA, and OOF decision-rule calibration
-targeting the EXACT competition Final. Writes ./working/submission.csv (contract-checked).
-
-No external data, no metadata fusion (it hurt the true metric), no private answers.
-Stress proxy (sensor_noise_score>=0.5757) is used ONLY for the internal CV read, never as a feature.
-"""
 import os, sys, time, json, math, glob, zipfile
 import numpy as np, pandas as pd, cv2
 from PIL import Image
@@ -14,12 +5,11 @@ import torch, torch.nn as nn, torch.nn.functional as F
 import timm
 cv2.setNumThreads(0); T0=time.time()
 def env(k,d): return os.environ.get(k,d)
-TIME_BUDGET=float(env("TIME_BUDGET","1620"))   # 27 min; hard wall is 30
+TIME_BUDGET=float(env("TIME_BUDGET","1620"))
 SEED=int(env("SEED","0")); FOLDS=int(env("FOLDS","5")); NW=int(env("NW","4"))
-# Ensemble spec (finalized from Kaggle OOF). Trained in priority order; self-timing drops
-# later (model,fold) jobs if the budget would be exceeded — a valid submission is always produced.
+
 MODELS=json.loads(env("MODELS", json.dumps([
-    # base first (strongest single, ~0.82 OOF cal): if the budget cuts swin, base alone still ships.
+
     {"name":"convnext_base.fb_in22k","img":224,"bs":24,"epochs":16,"sev":0.85},
     {"name":"swin_small_patch4_window7_224.ms_in22k","img":224,"bs":24,"epochs":16,"sev":0.85},
 ])))
@@ -27,7 +17,6 @@ dev='cuda' if torch.cuda.is_available() else 'cpu'
 torch.manual_seed(SEED); np.random.seed(SEED); torch.backends.cudnn.benchmark=True
 print(f"dev {dev} budget {TIME_BUDGET}s models {[m['name'] for m in MODELS]}", flush=True)
 
-# ---------------- data ----------------
 def _valid(d): return all(os.path.exists(os.path.join(d,f)) for f in ["train.csv","test.csv","sample_submission.csv"]) and os.path.isdir(os.path.join(d,"images"))
 def find_data():
     for c in ["./dataset/public","dataset/public","./dataset","dataset","./public","public","."]:
@@ -42,7 +31,6 @@ ID2LAB={0:'route-aphelion',1:'route-borealis',2:'route-cygnus',3:'route-driftwoo
 y=train_df["target_id"].values.astype(np.int64)
 stress=(train_df["sensor_noise_score"].values>=0.5757).astype(np.int8)
 
-# ---------------- exact metric (for internal calibration only) ----------------
 C=list(range(6))
 def macro_f1(yt,yp):
     f=[]
@@ -64,7 +52,6 @@ def stress_mf1(yt,yp,m):
     return macro_f1(yt[m],yp[m])
 def FINAL(yt,yp,m): return 0.40*macro_f1(yt,yp)+0.35*bal_acc(yt,yp)+0.10*gate_f1(yt,yp)+0.15*stress_mf1(yt,yp,m)
 
-# ---------------- degradation aug ----------------
 def R(a,b): return np.random.uniform(a,b)
 def degrade(img,s):
     h,w=img.shape[:2]
@@ -140,7 +127,6 @@ def train_fold(mc,tr_idx,va_idx,cw):
     del model; torch.cuda.empty_cache() if dev=='cuda' else None
     return va,te
 
-# ---------------- train (self-timing) ----------------
 from sklearn.model_selection import StratifiedKFold
 cnt=np.bincount(y,minlength=6);cw=(cnt.sum()/(6*cnt));cw/=cw.mean()
 folds=list(StratifiedKFold(FOLDS,shuffle=True,random_state=SEED).split(y,y))
@@ -159,7 +145,6 @@ for mc in MODELS:
         print("[budget] stop before next model",flush=True);break
 test=test_sum/max(1,test_n)
 
-# ---------------- OOF decision-rule calibration ----------------
 w=np.ones(6)
 if oof_full:
     oof=np.mean(oof_full,0)
@@ -175,7 +160,6 @@ if oof_full:
 else:
     print("WARN: no fully-trained model for calibration; using raw argmax",flush=True)
 
-# ---------------- write + verify submission ----------------
 labels=(test*w).argmax(1)
 sub=ss.copy(); sub["target"]=[ID2LAB[int(i)] for i in labels]; sub=sub[["id","target","stress_flag"]]
 path=os.path.join(OUT,"submission.csv"); sub.to_csv(path,index=False)
