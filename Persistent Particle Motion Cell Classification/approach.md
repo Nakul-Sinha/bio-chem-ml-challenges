@@ -47,15 +47,25 @@ leakage-free estimate of test accuracy.
 | + multi-scale × multi-channel grid fusion | **0.606** | 0.773 | 0.684 | gray+clahe+green, halves 10–16 |
 | (dx,dy) affine calibration | 0.606 | — | — | matcher already unbiased → no gain |
 | local phase-corr subpixel refine | 0.587 | — | — | **worse** — dropped |
-| CNN (aligned 6-ch, resnet18, xb+yb heads) | 0.627 | **0.862** | 0.692 | fixes gross x-errors via learned association |
-| CNN resnet18 + vflip aug[yb→3−yb] + vflip TTA | 0.639 | 0.868 | 0.712 | vflip lifts the fine y-band |
-| CNN resnet34 + vflip aug + TTA | 0.650 | 0.879 | 0.713 | architectural diversity |
-| CNN ensemble (resnet18+resnet34, vflip) | 0.660 | 0.883 | 0.720 | |
-| **Blend: CNN ensemble(log) ⊕ classical grid-marginals** | **0.676** | ~0.89 | ~0.74 | nested-5-fold-CV honest (WX=0.85,WY=0.65) |
+| small custom CNN, from scratch (6-ch) | 0.552 | 0.853 | 0.636 | too weak on 900 imgs → dropped |
+| hybrid CNN (classical grid fed as input) | 0.587–0.619 | — | — | late blend beats hybrid → dropped |
+| CNN resnet18 **from scratch** (6-ch, vflip aug[yb→3−yb]+TTA) | 0.618 | **0.870** | 0.700 | BN+residual+heavy aug train well from scratch |
+| CNN resnet34 from scratch | 0.614 | 0.860 | 0.698 | architectural diversity |
+| + translation augmentation | 0.55–0.57 | — | — | **worse** — shifts target off center → dropped |
+| CNN ensemble (resnet18×k + resnet34×k, from scratch) | 0.629 | 0.876 | 0.706 | image-only |
+| **Blend: CNN ensemble(log) ⊕ classical grid-marginals** | **~0.64** | ~0.88 | ~0.72 | nested-5-fold-CV honest (WX=0.80,WY=0.57) |
 
-**Headline honest number: 0.676 exact (nested 5-fold CV)** vs 0.517 AI baseline and 0.143
-flow prior. Every step was gated on this honest metric; reverting was used freely
-(phase-corr refine and affine calibration were tried and dropped for lack of gain).
+**Headline honest number: ~0.64 exact (nested 5-fold CV)** vs 0.517 AI baseline and
+0.143 flow prior. Every step was gated on this honest metric; reverting was used freely
+(translation aug, the classical-grid hybrid, phase-corr refine and affine calibration
+were all tried and dropped for lack of gain).
+
+**Compliance note.** The CNNs are trained **only on the provided public train images**
+(`weights=None` — no ImageNet/external pretrained weights), to strictly honor the rule
+*"ensembles trained only from the provided public training data and images."* An earlier
+variant initialized from ImageNet-pretrained backbones scored 0.676 CV; it was dropped
+to remove any ambiguity about external data (the ~0.036 gap is the compliance cost). The
+training-free classical matcher (0.606) is compliant under the strictest reading.
 
 ### Why each ingredient
 - **Classical grid fusion**: single-bead template matching is brittle under clutter;
@@ -81,12 +91,13 @@ The CNN attacks the gross x-errors; the vflip-augmented y-head + blend attack th
 boundary.
 
 ## Final solution (shipped)
-`solution.py` (self-timing, A10G ≤30 min, torch + pretrained weights, no pip):
+`solution.py` (self-timing, A10G ≤30 min, torch only — no pip, no pretrained weights):
 1. classical fused-grid matcher → test (dx,dy) + grid x/y-band marginals;
-2. self-timed CNN ensemble (resnet18/34 seeds) trained on all 900 public images,
-   vflip aug + vflip TTA, horizon scalar input;
-3. log-blend CNN ⊕ classical per band (WX, WY), quantize with published edges;
+2. self-timed CNN ensemble (resnet18/34 seeds, `weights=None`) trained from scratch on
+   all 900 public images, vflip aug + vflip TTA, horizon scalar input;
+3. log-blend CNN ⊕ classical per band (WX=0.80, WY=0.57), quantize with published edges;
 4. write `working/submission.csv` (strict schema; order matches sample_submission).
 
-Compliance: only image content + public `horizon`; no ids/hashes/order/timestamps;
-no private files; no per-file hardcoding; reproducible in the expected runtime.
+Compliance: only image content + public `horizon`; models trained **only on provided
+public images** (no external/pretrained weights); no ids/hashes/order/timestamps; no
+private files; no per-file hardcoding; reproducible in the expected runtime.
