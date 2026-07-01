@@ -1,32 +1,12 @@
-"""
-Single Cell Hidden Probe Sequence Reconstruction — self-contained, self-timing solution.
-
-Problem reduces to per-target ordinal prediction (16 hidden probes T00..T15, each
-absent/B1/B2/B3) + deterministic canonical decode. Target *selection* dominates the score;
-per-target active-AUC ~0.65 is a data ceiling (proven: LR==GBDT==kNN==MLP; targets are ~mutually
-independent (mean|corr|=0.06) so joint modelling / stacking adds nothing; feature engineering
-adds nothing). The grader is token-level and recall-favoring (under the 'ratio' convention the
-whole metric collapses to token-Dice), so the score is won at the DECODE, not the model:
- - high-recall per-target-threshold decode tuned on mean(max,ratio) -> ~13 tokens/row
-   (dropping the 'sum' norm, which under-predicts at ~7 and pins the score to the prior floor);
- - modal-bin defaulting: argmax-decode a bin only for the 4 targets whose bin is actually
-   predictable from source (T01,T04,T13,T14; grouped-OOF bin-AUC>0.60), else B1;
- - a cosine-kNN retrieval prob-active blended into the decode (independent inductive bias);
- - damage augmentation (zero deterministic probe groups) for the damaged-panel subset.
-
-Env: torch + numpy + pandas only (no sklearn/lightgbm, no pip, no external weights). Trains
-from scratch at inference (data is tiny). Writes ./working/submission.csv and validates it.
-Self-times to stay well under the A10G / 30-min budget.
-"""
 import os, sys, time, glob, re, math, warnings
 import numpy as np, pandas as pd
 import torch, torch.nn as nn, torch.nn.functional as F
 warnings.filterwarnings('ignore'); np.seterr(all='ignore')
 
 T_START = time.time()
-BUDGET_S = float(os.environ.get("SOLUTION_BUDGET_S", "1500"))   # 25 min default, < 30 min wall
+BUDGET_S = float(os.environ.get("SOLUTION_BUDGET_S", "1500"))
 DEV = 'cuda' if torch.cuda.is_available() else 'cpu'
-if DEV == 'cuda':   # verify CUDA actually runs kernels (some envs report available but mismatch arch)
+if DEV == 'cuda':
     try:
         _t = torch.zeros(4, device='cuda'); float((_t + 1).sum().item())
     except Exception as e:
@@ -34,7 +14,6 @@ if DEV == 'cuda':   # verify CUDA actually runs kernels (some envs report availa
 RNG = np.random.default_rng(0)
 torch.manual_seed(0)
 
-# ----------------------------- data discovery -----------------------------
 def find_data():
     try: here = os.path.dirname(os.path.abspath(__file__))
     except Exception: here = os.getcwd()
@@ -47,7 +26,6 @@ def find_data():
                 return d
         except Exception:
             pass
-    # recursive fallback: walk common roots for a dir containing both csvs
     for root in ["/kaggle/input", os.getcwd(), here]:
         if not os.path.isdir(root): continue
         for dp, _, fns in os.walk(root):
@@ -63,9 +41,8 @@ try:
     obs = pd.read_csv(os.path.join(DATA, "observed_panel.csv"))
     DG = obs.set_index('observed_index').damage_group.reindex(range(80)).fillna(-1).astype(int).values
 except Exception:
-    DG = np.array([i % 4 for i in range(80)])   # fallback: 4 contiguous-ish groups
+    DG = np.array([i % 4 for i in range(80)])
 
-# ----------------------------- parsing / features -----------------------------
 TOKEN_RE = re.compile(r'^T(\d\d)_B([123])$')
 def parse_source(s):
     ov = np.zeros(80, np.float32); tot = 0.0; nz = 0.0; panel = 'PANEL_NORMAL'; meta = {}
@@ -119,16 +96,10 @@ for t in range(16):
     for b in [1,2,3]:
         if (Y[:,t]==b).any(): allowed[t,b]=True
 AMASK = torch.tensor(allowed, device=DEV)
-STRONG = [t for t in range(16) if allowed[t,2]]    # targets that use B2
-# Targets whose bin (B1 vs B3/B2) is genuinely predictable from source (grouped-OOF bin-AUC>0.60):
-# T14=0.79, T13=0.69, T01=0.63, T04=0.61. Everything else has ~0.54 (random) so defaults to modal
-# B1 (the max-recall choice). Old code argmax-decoded STRONG={5,6,12,13,14} — the wrong set.
+STRONG = [t for t in range(16) if allowed[t,2]]
 BIN_TARGETS = [1,4,13,14]
 print("[targets] predictable-bin targets:", BIN_TARGETS, flush=True)
 
-# ----------------------------- retrieval (kNN) side-signal -----------------------------
-# Biologically-motivated: cells with similar observed expression share hidden activity. A cosine
-# kNN over z-scored log-expression gives an independent prob-active estimate blended into the decode.
 ACTtr = (Y>0).astype(np.float32)
 def _zn(OVx):
     z=(np.log1p(OVx)-MU)/SD
@@ -146,9 +117,8 @@ def knn_oof_pact(gid, K=80, temp=0.1):
         va=np.where(np.isin(gid,fg))[0]; tr=np.where(~np.isin(gid,fg))[0]
         P[va]=knn_pact(ZNtr[va],ZNtr[tr],ACTtr[tr],K,temp)
     return P
-KNN_W=0.30   # blend weight on kNN prob-active (rest = neural ensemble)
+KNN_W=0.30
 
-# ----------------------------- models -----------------------------
 class MLP(nn.Module):
     def __init__(s,din,h=256,do=0.4,nl=2):
         super().__init__(); L=[]; d=din
@@ -168,7 +138,6 @@ def dmg_augment(ov,dmg,p=0.5):
 
 def train_one(kind, idx_tr, seed, epochs,
               OVs=None,TOTs=None,NZs=None,DMGs=None,CONDs=None,SEXs=None,STGs=None):
-    """Train one model on rows idx_tr of the training set. Returns the fitted net."""
     torch.manual_seed(seed); np.random.seed(seed)
     yb = torch.tensor(Y[idx_tr], device=DEV)
     net = (MLP(DIN) if kind=='mlp' else Lin(DIN)).to(DEV)
@@ -194,7 +163,6 @@ def predict(net, OVx,TOTx,NZx,DMGx,CONDx,SEXx,STGx_i):
     with torch.no_grad():
         return F.softmax(net(X).masked_fill(~AMASK.unsqueeze(0),-1e9),2).cpu().numpy()
 
-# ----------------------------- exact metric (for threshold tuning) -----------------------------
 NONE_ID=48
 def pack(bm,Lmax=16):
     b=np.asarray(bm); n=b.shape[0]; tgt=np.arange(16)[None,:]
@@ -230,7 +198,6 @@ class Scorer:
             es=1-lev/(la+lb) if norm=='sum' else 1-lev/m; ls=inter/m
         return 0.5*es+0.3*f1+0.2*ls
 
-# ----------------------------- decode + threshold tuning -----------------------------
 def decode(oof, tau, pact=None):
     if pact is None: pact=1-oof[:,:,0]
     bins=np.ones((oof.shape[0],16),int); ab=oof[:,:,1:].argmax(2)+1
@@ -264,15 +231,8 @@ def weighted(rows,flags):
     return 0.45*float(rows.mean())+0.25*mn(flags['shifted'])+0.20*mn(flags['damaged'])+0.10*mn(flags['rare'])
 
 def tune_thresholds(oof, flags, scorer, pact=None):
-    """Tune per-target thresholds on a recall-favoring objective = mean(max, ratio) finals.
-    The grader is token-level and recall-favoring (under the 'ratio' convention the whole metric
-    collapses to token-Dice, which rewards recall). 'sum' was dropped: it wants ~7 tokens/row and
-    caused the previous ship to under-predict (9.9 tok) and score at the prior floor. mean(max,ratio)
-    lands at ~13 tokens/row, the joint optimum of both plausible norms."""
     def obj(tau):
         pb=decode(oof,tau,pact)
-        # mostly-ratio (grader is recall-favoring token-Dice); small max term only guards against a
-        # degenerate all-16 over-prediction on a mis-calibrated fold. ~13 tokens/row.
         return 0.25*weighted(scorer.rows(pb,'max'),flags)+0.75*weighted(scorer.rows(pb,'ratio'),flags)
     tau=np.full(16,0.10); cur=obj(tau)
     for _ in range(4):
@@ -284,7 +244,6 @@ def tune_thresholds(oof, flags, scorer, pact=None):
             tau[t]=bt; cur=bv
     return tau,cur
 
-# ----------------------------- submission validity -----------------------------
 def canon_sort(tokens):
     best={}
     for tk in tokens:
@@ -315,11 +274,8 @@ def check_submission(df, test_ids):
         if toks!=canon_sort(toks): return False,f"noncanon@{i}"
     return True,"OK"
 
-# ----------------------------- run -----------------------------
 def build_ensemble_oof(specs, gid):
-    """Grouped-CV OOF probs for threshold tuning. specs = list of (kind, seed, epochs)."""
     oof=np.zeros((N,16,4),np.float32)
-    # simple 5-fold GroupKFold
     ug=np.unique(gid); folds=[ug[i::5] for i in range(5)]
     for fg in folds:
         va=np.where(np.isin(gid,fg))[0]; tr=np.where(~np.isin(gid,fg))[0]
@@ -335,14 +291,12 @@ def norm_probs(o):
     for t in range(16): o[:,t,~allowed[t]]=0
     return o/(o.sum(2,keepdims=True)+1e-9)
 
-# self-timing: warm up CUDA (init excluded), estimate a full 110-epoch MLP cost, pick the
-# largest ensemble plan that fits the budget with margin.
-_=train_one('mlp',np.arange(min(128,N)),999,1)          # CUDA/cuDNN warmup — not timed
+_=train_one('mlp',np.arange(min(128,N)),999,1)
 if DEV=='cuda': torch.cuda.synchronize()
 t0=time.time(); _=train_one('mlp',np.arange(N),998,6)
 if DEV=='cuda': torch.cuda.synchronize()
-per_model=max(0.3,(time.time()-t0)/6*110)               # ~sec for one full-data 110-epoch MLP
-def cost(m,l,x): return per_model*(5*(0.8*m+0.4*l)+(m+0.5*l+x))   # CV(5-fold)+full-fit+extra
+per_model=max(0.3,(time.time()-t0)/6*110)
+def cost(m,l,x): return per_model*(5*(0.8*m+0.4*l)+(m+0.5*l+x))
 budget=max(60.0, BUDGET_S-per_model*3-60)
 EXTRA=0; base_specs=[('mlp',0,90)]
 for m,l,x in [(3,2,3),(3,1,2),(2,1,2),(2,1,0),(1,1,0),(1,0,0)]:
@@ -354,11 +308,10 @@ scorer=Scorer(Y)
 gid,gkeys=make_groups()
 oof=build_ensemble_oof(base_specs, gid)
 oof=norm_probs(oof)
-knn_oof=knn_oof_pact(gid)                                  # grouped-OOF retrieval prob-active
-pact_oof=(1-KNN_W)*(1-oof[:,:,0])+KNN_W*knn_oof            # blended prob-active for decode
+knn_oof=knn_oof_pact(gid)
+pact_oof=(1-KNN_W)*(1-oof[:,:,0])+KNN_W*knn_oof
 flags=subset_flags(gkeys)
 tau,cvobj=tune_thresholds(oof,flags,scorer,pact_oof)
-# report CV under all norms (with subset breakdown for transparency)
 def subs(rows):
     def mn(m): m=np.asarray(m,bool); return float(rows[m].mean()) if m.any() else 0.0
     return (0.45*float(rows.mean())+0.25*mn(flags['shifted'])+0.20*mn(flags['damaged'])+0.10*mn(flags['rare']),
@@ -368,21 +321,19 @@ for nm in ['max','sum','ratio']:
     print(f"[CV {nm:5s}] FINAL={fin:.4f} all={al:.4f} shifted={sh:.4f} damaged={dm:.4f} rare={ra:.4f}", flush=True)
 print("[tau]",np.round(tau,2)," avg_tok/row=%.2f"%(decode(oof,tau,pact_oof)>0).sum(1).mean(),flush=True)
 
-# retrain on FULL train (add seeds if budget remains), predict test
 full_specs=list(base_specs)
 te_prob=np.zeros((len(test),16,4),np.float32); nmodels=0
 for kind,seed,ep in full_specs:
     if time.time()-T_START > BUDGET_S-120: break
     net=train_one(kind,np.arange(N),seed,ep)
     te_prob+=predict(net,OVte,TOTte,NZte,DMGte,CONDte,SEXte,STGte_i); nmodels+=1
-# spend leftover budget on extra MLP seeds
 extra=3
 for e in range(extra):
     if time.time()-T_START > BUDGET_S-120: break
     net=train_one('mlp',np.arange(N),1000+e,110)
     te_prob+=predict(net,OVte,TOTte,NZte,DMGte,CONDte,SEXte,STGte_i); nmodels+=1
 te_prob=norm_probs(te_prob/max(1,nmodels))
-knn_te=knn_pact(_zn(OVte),ZNtr,ACTtr)                      # retrieval prob-active for test
+knn_te=knn_pact(_zn(OVte),ZNtr,ACTtr)
 pact_te=(1-KNN_W)*(1-te_prob[:,:,0])+KNN_W*knn_te
 print(f"[predict] ensembled {nmodels} full-data models", flush=True)
 
