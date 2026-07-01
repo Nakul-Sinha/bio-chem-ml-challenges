@@ -97,27 +97,7 @@ for t in range(16):
         if (Y[:,t]==b).any(): allowed[t,b]=True
 AMASK = torch.tensor(allowed, device=DEV)
 STRONG = [t for t in range(16) if allowed[t,2]]
-BIN_TARGETS = [1,4,13,14]
-print("[targets] predictable-bin targets:", BIN_TARGETS, flush=True)
-
-ACTtr = (Y>0).astype(np.float32)
-def _zn(OVx):
-    z=(np.log1p(OVx)-MU)/SD
-    return (z/(np.linalg.norm(z,axis=1,keepdims=True)+1e-9)).astype(np.float32)
-ZNtr=_zn(OVtr)
-def knn_pact(Zq, Zref, ACTref, K=80, temp=0.1):
-    K=min(K,len(Zref)-1); P=np.zeros((len(Zq),16),np.float32); sims=Zq@Zref.T
-    for r in range(len(Zq)):
-        s=sims[r]; idx=np.argpartition(-s,K)[:K]
-        w=np.exp(s[idx]/temp); w/=w.sum()+1e-9; P[r]=w@ACTref[idx]
-    return P
-def knn_oof_pact(gid, K=80, temp=0.1):
-    P=np.zeros((N,16),np.float32); ug=np.unique(gid); folds=[ug[i::5] for i in range(5)]
-    for fg in folds:
-        va=np.where(np.isin(gid,fg))[0]; tr=np.where(~np.isin(gid,fg))[0]
-        P[va]=knn_pact(ZNtr[va],ZNtr[tr],ACTtr[tr],K,temp)
-    return P
-KNN_W=0.30
+print("[targets] B2/strong-bin targets:", STRONG, flush=True)
 
 class MLP(nn.Module):
     def __init__(s,din,h=256,do=0.4,nl=2):
@@ -198,10 +178,9 @@ class Scorer:
             es=1-lev/(la+lb) if norm=='sum' else 1-lev/m; ls=inter/m
         return 0.5*es+0.3*f1+0.2*ls
 
-def decode(oof, tau, pact=None):
-    if pact is None: pact=1-oof[:,:,0]
-    bins=np.ones((oof.shape[0],16),int); ab=oof[:,:,1:].argmax(2)+1
-    for t in BIN_TARGETS: bins[:,t]=ab[:,t]
+def decode(oof, tau):
+    pact=1-oof[:,:,0]; bins=np.ones((oof.shape[0],16),int); ab=oof[:,:,1:].argmax(2)+1
+    for t in STRONG: bins[:,t]=ab[:,t]
     return np.where(pact>=tau[None,:],bins,0)
 
 def make_groups():
@@ -230,10 +209,10 @@ def weighted(rows,flags):
     def mn(msk): msk=np.asarray(msk,bool); return float(rows[msk].mean()) if msk.any() else 0.0
     return 0.45*float(rows.mean())+0.25*mn(flags['shifted'])+0.20*mn(flags['damaged'])+0.10*mn(flags['rare'])
 
-def tune_thresholds(oof, flags, scorer, pact=None):
+def tune_thresholds(oof, flags, scorer):
     def obj(tau):
-        pb=decode(oof,tau,pact)
-        return 0.1*weighted(scorer.rows(pb,'max'),flags)+0.9*weighted(scorer.rows(pb,'sum'),flags)
+        pb=decode(oof,tau)
+        return 0.5*weighted(scorer.rows(pb,'max'),flags)+0.5*weighted(scorer.rows(pb,'sum'),flags)
     tau=np.full(16,0.10); cur=obj(tau)
     for _ in range(4):
         for t in range(16):
@@ -274,7 +253,8 @@ def check_submission(df, test_ids):
         if toks!=canon_sort(toks): return False,f"noncanon@{i}"
     return True,"OK"
 
-def build_ensemble_oof(specs, gid):
+def build_ensemble_oof(specs):
+    gid,gkeys=make_groups()
     oof=np.zeros((N,16,4),np.float32)
     ug=np.unique(gid); folds=[ug[i::5] for i in range(5)]
     for fg in folds:
@@ -284,7 +264,7 @@ def build_ensemble_oof(specs, gid):
             net=train_one(kind,tr,seed,ep)
             acc+=predict(net,OVtr[va],TOTtr[va],NZtr[va],DMGtr[va],CONDtr[va],SEXtr[va],STGtr_i[va])
         oof[va]=acc/len(specs)
-    return oof
+    return oof,gkeys
 
 def norm_probs(o):
     o=o.copy()
@@ -305,21 +285,18 @@ for m,l,x in [(3,2,3),(3,1,2),(2,1,2),(2,1,0),(1,1,0),(1,0,0)]:
 print(f"[timing] per_model~{per_model:.1f}s budget~{budget:.0f}s specs={base_specs} extra={EXTRA}", flush=True)
 
 scorer=Scorer(Y)
-gid,gkeys=make_groups()
-oof=build_ensemble_oof(base_specs, gid)
+oof,gkeys=build_ensemble_oof(base_specs)
 oof=norm_probs(oof)
-knn_oof=knn_oof_pact(gid)
-pact_oof=(1-KNN_W)*(1-oof[:,:,0])+KNN_W*knn_oof
 flags=subset_flags(gkeys)
-tau,cvobj=tune_thresholds(oof,flags,scorer,pact_oof)
+tau,cvobj=tune_thresholds(oof,flags,scorer)
 def subs(rows):
     def mn(m): m=np.asarray(m,bool); return float(rows[m].mean()) if m.any() else 0.0
     return (0.45*float(rows.mean())+0.25*mn(flags['shifted'])+0.20*mn(flags['damaged'])+0.10*mn(flags['rare']),
             float(rows.mean()),mn(flags['shifted']),mn(flags['damaged']),mn(flags['rare']))
 for nm in ['max','sum','ratio']:
-    fin,al,sh,dm,ra=subs(scorer.rows(decode(oof,tau,pact_oof),nm))
+    fin,al,sh,dm,ra=subs(scorer.rows(decode(oof,tau),nm))
     print(f"[CV {nm:5s}] FINAL={fin:.4f} all={al:.4f} shifted={sh:.4f} damaged={dm:.4f} rare={ra:.4f}", flush=True)
-print("[tau]",np.round(tau,2)," avg_tok/row=%.2f"%(decode(oof,tau,pact_oof)>0).sum(1).mean(),flush=True)
+print("[tau]",np.round(tau,2),flush=True)
 
 full_specs=list(base_specs)
 te_prob=np.zeros((len(test),16,4),np.float32); nmodels=0
@@ -333,11 +310,9 @@ for e in range(extra):
     net=train_one('mlp',np.arange(N),1000+e,110)
     te_prob+=predict(net,OVte,TOTte,NZte,DMGte,CONDte,SEXte,STGte_i); nmodels+=1
 te_prob=norm_probs(te_prob/max(1,nmodels))
-knn_te=knn_pact(_zn(OVte),ZNtr,ACTtr)
-pact_te=(1-KNN_W)*(1-te_prob[:,:,0])+KNN_W*knn_te
 print(f"[predict] ensembled {nmodels} full-data models", flush=True)
 
-pred_bins=decode(te_prob,tau,pact_te)
+pred_bins=decode(te_prob,tau)
 os.makedirs("./working", exist_ok=True)
 sub=pd.DataFrame({'id':test['id'],
                   'predicted_sequence':[bins_to_str(pred_bins[i]) for i in range(len(test))]})
