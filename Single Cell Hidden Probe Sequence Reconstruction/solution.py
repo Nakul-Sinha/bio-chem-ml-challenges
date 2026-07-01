@@ -233,7 +233,7 @@ def weighted(rows,flags):
 def tune_thresholds(oof, flags, scorer, pact=None):
     def obj(tau):
         pb=decode(oof,tau,pact)
-        return 0.25*weighted(scorer.rows(pb,'max'),flags)+0.75*weighted(scorer.rows(pb,'ratio'),flags)
+        return 0.1*weighted(scorer.rows(pb,'max'),flags)+0.9*weighted(scorer.rows(pb,'sum'),flags)
     tau=np.full(16,0.10); cur=obj(tau)
     for _ in range(4):
         for t in range(16):
