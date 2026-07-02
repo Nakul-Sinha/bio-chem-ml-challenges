@@ -73,10 +73,11 @@ def train(idx,seed,epochs):
     Xt=torch.tensor(Xtr[idx]); ht=torch.tensor(hor[idx]); xbt=torch.tensor(xb[idx]); ybt=torch.tensor(yb[idx])
     net=Net().to(dev); opt=torch.optim.AdamW(net.parameters(),lr=8e-4,weight_decay=1e-3)
     sch=torch.optim.lr_scheduler.CosineAnnealingLR(opt,epochs); n=len(Xt)
+    BS=24 if RES<=96 else 16
     for ep in range(epochs):
         net.train(); perm=torch.randperm(n)
-        for i in range(0,n,24):
-            b=perm[i:i+24]; xba=aug(Xt[b].to(dev)); hba=ht[b].to(dev)
+        for i in range(0,n,BS):
+            b=perm[i:i+BS]; xba=aug(Xt[b].to(dev)); hba=ht[b].to(dev)
             ybb=ybt[b].to(dev); flip=torch.rand(len(b),device=dev)<0.5
             xba=torch.where(flip[:,None,None,None],xba.flip(2),xba); ybb=torch.where(flip,3-ybb,ybb)
             ox,oy=net(xba,hba); loss=F.cross_entropy(ox,xbt[b].to(dev))+F.cross_entropy(oy,ybb)
