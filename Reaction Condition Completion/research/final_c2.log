@@ -1,4 +1,4 @@
-data dir: G:\Datacurve\eris2\CPU-dGPU-ML-chals\Reaction Condition Completion\dataset device: cuda
+data dir: G:\ml\data2\CPU-dGPU-ML-chals\Reaction Condition Completion\dataset device: cuda
 featurizing...
 feat done (18000, 6193) [33s]
 seed 0 done [60s]
