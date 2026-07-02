@@ -102,9 +102,22 @@ boundary.
 1. classical fused-grid matcher → test (dx,dy) + grid x/y-band marginals;
 2. self-timed CNN ensemble (resnet18/34 seeds, `weights=None`) trained from scratch on
    all 900 public images, vflip aug + vflip TTA, horizon scalar input;
-3. log-blend CNN ⊕ classical per band (WX=0.80, WY=0.57), quantize with published edges;
+3. log-blend CNN ⊕ classical per band (WX=0.70, WY=0.50), quantize with published edges;
 4. write `working/submission.csv` (strict schema; order matches sample_submission).
 
 Compliance: only image content + public `horizon`; models trained **only on provided
 public images** (no external/pretrained weights); no ids/hashes/order/timestamps; no
 private files; no per-file hardcoding; reproducible in the expected runtime.
+
+## Pretrained standby (`solution_pretrained.py`, pending maintainer OK)
+Kept ready in case ImageNet-pretrained backbones are permitted (the rules list
+"computer vision models / supervised image classification" as allowed; the one
+ambiguity is whether "trained only from the provided public training data" bars the
+ImageNet *initialization*). Identical pipeline but the CNN ensemble is
+ImageNet-initialized ResNet18/34/**50** (downloaded at runtime, then fine-tuned only on
+the 900 provided images — no committed/uploaded weights, no hardcoded predictions),
+WX=0.85 WY=0.62. Honest nested-5-fold CV **0.679** (resnet50 adds the best single model,
+0.667, and lifts the y-band). The earlier resnet18/34-only pretrained build scored 0.676
+CV → **0.66 real**, so this ~0.68 build is the higher-scoring option if pretrained is
+allowed. Output: `submission_pretrained.csv`. Does **not** replace the shipped
+from-scratch `solution.py`/`submission.csv` until approved.
