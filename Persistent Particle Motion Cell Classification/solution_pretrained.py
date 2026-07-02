@@ -6,13 +6,13 @@ import torch, torch.nn as nn, torch.nn.functional as F
 import torchvision
 
 T0=time.time()
-TIME_BUDGET=float(os.environ.get("PPMC_BUDGET","1600"))
-EPOCHS=int(os.environ.get("PPMC_EPOCHS","50"))
+TIME_BUDGET=float(os.environ.get("PPMC_BUDGET","1700"))
+EPOCHS=int(os.environ.get("PPMC_EPOCHS","45"))
 WX=0.85
-WY=0.62
+WY=0.65
 T_GRID=0.03
-CONFIGS=[("resnet18",101),("resnet34",303),("resnet50",42),("resnet18",202),
-         ("resnet34",505),("resnet50",202),("resnet18",404)]
+CONFIGS=[("resnet18",101,96),("resnet34",303,96),("resnet50",42,96),
+         ("resnet50",42,128),("resnet50",202,128),("resnet18",202,96),("resnet50",303,128)]
 
 def find_data_dir():
     here=Path(__file__).resolve().parent
@@ -68,10 +68,12 @@ def classical_probs(df):
     return Px,Py
 
 dev='cuda' if torch.cuda.is_available() else 'cpu'
-def load6(df):
-    X=np.zeros((len(df),6,96,96),np.float32)
+def load6(df,res):
+    X=np.zeros((len(df),6,res,res),np.float32)
     for i,p in enumerate(df['image_path'].values):
-        L,R=load_pair(p); X[i,:3]=L.transpose(2,0,1)/255.; X[i,3:]=R.transpose(2,0,1)/255.
+        L,R=load_pair(p)
+        if res!=96: L=cv2.resize(L,(res,res)); R=cv2.resize(R,(res,res))
+        X[i,:3]=L.transpose(2,0,1)/255.; X[i,3:]=R.transpose(2,0,1)/255.
     return X
 def make_bb(name):
     if name=='resnet50':
@@ -96,15 +98,16 @@ def aug(x):
     if torch.rand(1).item()<0.4:
         m=x.mean((2,3),keepdim=True); x=(x-m)*(0.8+0.4*torch.rand(B,1,1,1,device=dev))+m
     return x
-def train_one(X,h,xb,yb,arch,seed,epochs):
+def train_one(X,h,xb,yb,arch,seed,res,epochs):
     torch.manual_seed(seed); np.random.seed(seed)
-    net=Net(arch).to(dev); opt=torch.optim.AdamW(net.parameters(),lr=1e-3,weight_decay=1e-3)
+    net=Net(arch).to(dev); opt=torch.optim.AdamW(net.parameters(),lr=8e-4,weight_decay=1e-3)
     sch=torch.optim.lr_scheduler.CosineAnnealingLR(opt,epochs); n=len(X)
+    bs=24 if res<=96 else 16
     X=torch.tensor(X); h=torch.tensor(h); xb=torch.tensor(xb); yb=torch.tensor(yb)
     for ep in range(epochs):
         net.train(); perm=torch.randperm(n)
-        for i in range(0,n,32):
-            b=perm[i:i+32]; xba=aug(X[b].to(dev)); hba=h[b].to(dev)
+        for i in range(0,n,bs):
+            b=perm[i:i+bs]; xba=aug(X[b].to(dev)); hba=h[b].to(dev)
             ybb=yb[b].to(dev); flip=torch.rand(len(b),device=dev)<0.5
             xba=torch.where(flip[:,None,None,None],xba.flip(2),xba); ybb=torch.where(flip,3-ybb,ybb)
             ox,oy=net(xba,hba); loss=F.cross_entropy(ox,xb[b].to(dev))+F.cross_entropy(oy,ybb)
@@ -112,11 +115,14 @@ def train_one(X,h,xb,yb,arch,seed,epochs):
         sch.step()
     return net
 @torch.no_grad()
-def predict(net,X,h):
-    net.eval(); X=torch.tensor(X).to(dev); h=torch.tensor(h).to(dev)
-    px,py=net(X,h); px=px.softmax(1); py=py.softmax(1)
-    px2,py2=net(X.flip(2),h); px=(px+px2.softmax(1))/2; py=(py+py2.softmax(1).flip(1))/2
-    return px.cpu().numpy(),py.cpu().numpy()
+def predict(net,X,h,res):
+    net.eval(); bs=64 if res<=96 else 32; ox=[]; oy=[]
+    for i in range(0,len(X),bs):
+        xb_=torch.tensor(X[i:i+bs]).to(dev); hb=torch.tensor(h[i:i+bs]).to(dev)
+        px,py=net(xb_,hb); px=px.softmax(1); py=py.softmax(1)
+        px2,py2=net(xb_.flip(2),hb); px=(px+px2.softmax(1))/2; py=(py+py2.softmax(1).flip(1))/2
+        ox.append(px.cpu().numpy()); oy.append(py.cpu().numpy())
+    return np.concatenate(ox),np.concatenate(oy)
 
 def main():
     tr=pd.read_csv(DATA/'train.csv'); te=pd.read_csv(DATA/'test.csv')
@@ -128,18 +134,22 @@ def main():
     CTx,CTy=classical_probs(te); print("  done %.0fs"%(time.time()-tcx),flush=True)
 
     print("[cnn] loading images...",flush=True)
-    Xtr=load6(tr); Xte=load6(te)
-    MEAN=Xtr.mean((0,2,3),keepdims=True); STD=Xtr.std((0,2,3),keepdims=True)+1e-6
-    Xtr=(Xtr-MEAN)/STD; Xte=(Xte-MEAN)/STD
+    need=sorted({r for _,_,r in CONFIGS})
+    Xtr={}; Xte={}
+    for r in need:
+        a=load6(tr,r); b=load6(te,r)
+        mu=a.mean((0,2,3),keepdims=True); sd=a.std((0,2,3),keepdims=True)+1e-6
+        Xtr[r]=(a-mu)/sd; Xte[r]=(b-mu)/sd
 
-    NTx=np.zeros((len(te),5)); NTy=np.zeros((len(te),4)); nm=0; per=None
-    for arch,seed in CONFIGS:
-        if nm>=1 and per is not None and time.time()-T0+per*1.15>TIME_BUDGET:
+    NTx=np.zeros((len(te),5)); NTy=np.zeros((len(te),4)); nm=0; per={}
+    for arch,seed,res in CONFIGS:
+        est=per.get(res)
+        if nm>=1 and est is not None and time.time()-T0+est*1.15>TIME_BUDGET:
             print("  budget: stop after %d models"%nm,flush=True); break
-        tm=time.time(); net=train_one(Xtr,htr,xb,yb,arch,seed,EPOCHS)
-        px,py=predict(net,Xte,hte); NTx+=px; NTy+=py; nm+=1
-        per=time.time()-tm; del net; torch.cuda.empty_cache()
-        print("  model %d (%s s%d) %.0fs elapsed=%.0fs"%(nm,arch,seed,per,time.time()-T0),flush=True)
+        tm=time.time(); net=train_one(Xtr[res],htr,xb,yb,arch,seed,res,EPOCHS)
+        px,py=predict(net,Xte[res],hte,res); NTx+=px; NTy+=py; nm+=1
+        per[res]=time.time()-tm; del net; torch.cuda.empty_cache()
+        print("  model %d (%s s%d r%d) %.0fs elapsed=%.0fs"%(nm,arch,seed,res,per[res],time.time()-T0),flush=True)
     NTx/=max(nm,1); NTy/=max(nm,1)
 
     eps=1e-6

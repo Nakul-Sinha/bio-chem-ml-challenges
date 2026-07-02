@@ -114,10 +114,22 @@ Kept ready in case ImageNet-pretrained backbones are permitted (the rules list
 "computer vision models / supervised image classification" as allowed; the one
 ambiguity is whether "trained only from the provided public training data" bars the
 ImageNet *initialization*). Identical pipeline but the CNN ensemble is
-ImageNet-initialized ResNet18/34/**50** (downloaded at runtime, then fine-tuned only on
-the 900 provided images — no committed/uploaded weights, no hardcoded predictions),
-WX=0.85 WY=0.62. Honest nested-5-fold CV **0.679** (resnet50 adds the best single model,
-0.667, and lifts the y-band). The earlier resnet18/34-only pretrained build scored 0.676
-CV → **0.66 real**, so this ~0.68 build is the higher-scoring option if pretrained is
-allowed. Output: `submission_pretrained.csv`. Does **not** replace the shipped
-from-scratch `solution.py`/`submission.csv` until approved.
+ImageNet-initialized ResNet18/34/50 (downloaded at runtime, then fine-tuned only on the
+900 provided images — no committed/uploaded weights, no hardcoded predictions).
+
+Pretrained backbone search (honest nested-5-fold CV):
+
+| ensemble | nested-CV |
+|---|---|
+| resnet18 + resnet34 (prior build, 0.66 **real**) | 0.676 |
+| + resnet50 @96 | 0.679 |
+| + resnet50 **@128px** | **0.696** |
+| + convnext_tiny (failed to converge from 6-ch stem) | — dropped |
+
+The jump comes from **resnet50 at 128px input**: higher resolution sharpens the fine
+±2px y-band (yb 0.737→0.749), the dominant error. Final ensemble = resnet18 + resnet34 +
+resnet50@96 + resnet50@128 + classical, WX=0.85 WY=0.65 (y trusts the strong CNN more —
+opposite of the weak from-scratch case). Honest nested-CV **0.696** (fixed-weight up to
+0.70). Since pretrained CV tracks real within ~1.5 pts (0.676→0.66), this maps to ≈0.68
+real. Output: `submission_pretrained.csv`; per-model resolution is self-timed. Does **not**
+replace the shipped from-scratch `solution.py`/`submission.csv` until approved.
