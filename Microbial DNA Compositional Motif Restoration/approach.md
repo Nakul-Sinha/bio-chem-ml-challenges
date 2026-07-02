@@ -1,4 +1,4 @@
-# Approach — Microbial DNA Compositional Motif Restoration
+# Approach: Microbial DNA Compositional Motif Restoration
 
 **Time spent:** ~5 hours
 
@@ -23,7 +23,7 @@ sibling signal). Beats the AI baseline (0.191); ~leaderboard rank 3.
    `sibfrac^0.5` fixes this and lifts large-genome MRR (large genomes are 77% of the test).
 5. **Leak-free evaluation.** All genome statistics use visible tokens only; global co-occurrence uses
    leave-one-genome-out. (An early version leaked the contig's own gold pairs and reported a
-   misleading 0.28 — caught and removed.)
+   misleading 0.28, caught and removed.)
 
 ## Final scoring
 `score(t) = log1p( CF(t) / (sibfrac(t)+0.05)^0.5 ) + 0.1 · mean_{v∈visible} logP_global(t|v)`
@@ -34,7 +34,7 @@ on faithful CV.)
 ## What didn't work
 - From-scratch masked-LM transformer (contig + genome_context): 0.12. It overfits the ~90 training
   genomes and cannot access an unseen test genome's co-occurrence from just the 16-token context.
-- LightGBM learning-to-rank reranker over CF + co-occurrence + sibling-rank features: 0.205 — a
+- LightGBM learning-to-rank reranker over CF + co-occurrence + sibling-rank features: 0.205, a
   learned cross-genome combiner generalizes *worse* to disjoint genomes than non-parametric CF.
 - Linear and z-scored rank-fusion blends (CF + genome-cooc + global-cooc): all below CF alone.
 

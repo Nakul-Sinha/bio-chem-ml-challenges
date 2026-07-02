@@ -1,4 +1,4 @@
-# Approach — Reaction Condition Completion
+# Approach: Reaction Condition Completion
 
 **Time spent:** ~2.5 hours
 
@@ -7,12 +7,12 @@ A single **multi-task MLP** on RDKit reaction fingerprints predicts all four con
 (solvent set, temperature bin, time bin, catalyst presence) from the reaction SMILES. The final
 submission averages a 3-seed ensemble and applies a decode tuned directly to the composite metric.
 
-## Model — torch-only ensemble (rdkit-free, fully self-contained)
-Imports only numpy/pandas/torch — **no rdkit, no internet, no subprocess**, so the grading runtime
+## Model: torch-only ensemble (rdkit-free, fully self-contained)
+Imports only numpy/pandas/torch, **no rdkit, no internet, no subprocess**, so the grading runtime
 can't fail on a missing/blocked dependency. Two complementary views, blended 50/50:
-1. **n-gram MLP** — hashed character n-grams (n=2..5, crc32, 2048 buckets) of reactant/product/diff
+1. **n-gram MLP**: hashed character n-grams (n=2..5, crc32, 2048 buckets) of reactant/product/diff
    SMILES + 49 string descriptors (reagent-presence flags etc.). OOF composite 0.422.
-2. **1-D char-CNN** — a small Conv1d (kernels 3,5) over the raw SMILES character sequence; learns
+2. **1-D char-CNN**: a small Conv1d (kernels 3,5) over the raw SMILES character sequence; learns
    sequential motifs, so its errors are decorrelated from the bag-of-n-grams MLP (fp32 to avoid a
    Conv1d/bf16 hang). Weaker alone (0.371) but lifts the ensemble.
 **5-fold OOF composite: n-gram MLP 0.422 -> n-gram + char-CNN ensemble 0.429.**
@@ -27,7 +27,7 @@ reactant fingerprint + reagent flags.
 
 ## Model
 Shared 1024→512 backbone (BatchNorm + dropout) with five heads:
-- **softmax PRIMARY-solvent** head (NONE + 81 labels) — the decisive design choice. Solvent sets
+- **softmax PRIMARY-solvent** head (NONE + 81 labels), the decisive design choice. Solvent sets
   are 77% singleton / 11% NONE, so framing the dominant case as single-label softmax ranks the
   top solvent far better than 81 independent sigmoids (top-1 0.206→0.325, SolventSetF1 0.204→0.328).
 - **sigmoid multi-label** head for adding secondary solvents.
@@ -35,7 +35,7 @@ Shared 1024→512 backbone (BatchNorm + dropout) with five heads:
 Trained jointly with CE + BCE, OneCycle LR, AdamW.
 
 ## Decode (tuned on OOF to the composite)
-- temp/time: argmax of posterior divided by prior^α — α tuned so the *balanced* accuracy
+- temp/time: argmax of posterior divided by prior^α, α tuned so the *balanced* accuracy
   (mean per-class recall) is maximized without wrecking plain accuracy in the RowScore tracks.
 - catalyst: probability threshold tuned for macro-F1.
 - solvent: softmax argmax for the primary (with a NONE bias), plus sigmoid-thresholded secondaries.

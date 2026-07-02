@@ -1,4 +1,4 @@
-# Interrogation findings — Spectral Route Image Classification
+# Interrogation findings: Spectral Route Image Classification
 
 ## Data
 - 926 train / 199 test / 199 sample_submission. All images 224×224 RGB, clean. Layout flat: `dataset/images/{train,test}/<id>.jpg`, csvs in `dataset/`.

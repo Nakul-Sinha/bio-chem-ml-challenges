@@ -1,4 +1,4 @@
-# Approach — Persistent Particle Motion Cell Classification (Bedload Flow)
+# Approach: Persistent Particle Motion Cell Classification (Bedload Flow)
 
 ## Problem framing (geometry first)
 Each sample is a 200×96 crop pair: **left panel** = frame *t* with the target bead
@@ -18,7 +18,7 @@ so the y-axis needs ~1-px precision and is the hard sub-problem. `horizon` (2/3/
 scales the displacement magnitude → larger horizon = bigger, harder motion.
 
 Because the label is an *exact function of (dx,dy)*, we can measure a continuous
-displacement per sample and quantize it with the published edges — this is genuine
+displacement per sample and quantize it with the published edges, this is genuine
 per-sample tracking, not a flow prior.
 
 ## Priors we must beat (in-sample)
@@ -33,7 +33,7 @@ default leakage suspicion. Checks (downsampled-panel cosine NN):
   set is cleanly held out; there is no near-duplicate to exploit.
 - within-train only ~10 near-duplicate pairs out of 900; crucially, background
   similarity does **not** predict the label (samples at cosine ≥ 0.90 share a class
-  only ~28% of the time). So a model cannot cheat via background — it must track.
+  only ~28% of the time). So a model cannot cheat via background, it must track.
 Conclusion: **stratified 5-fold on motion_class is honest** here. The classical
 matcher additionally has **no trained parameters**, so its in-sample accuracy is a
 leakage-free estimate of test accuracy.
@@ -41,34 +41,34 @@ leakage-free estimate of test accuracy.
 ## What was tried (all on honest CV / leakage-free)
 | Method | exact | x-band | y-band | notes |
 |---|---|---|---|---|
-| horizon-cond majority prior | 0.143 | — | — | baseline to beat |
+| horizon-cond majority prior | 0.143 |  |, | baseline to beat |
 | Classical NCC, naive | 0.458 | 0.662 | 0.578 | masked template @center |
 | + plausibility window + subpixel | 0.549 | 0.72 | 0.64 | reject wrong-bead/far peaks |
-| + multi-scale × multi-channel grid fusion | **0.606** | 0.773 | 0.684 | gray+clahe+green, halves 10–16 |
-| (dx,dy) affine calibration | 0.606 | — | — | matcher already unbiased → no gain |
-| local phase-corr subpixel refine | 0.587 | — | — | **worse** — dropped |
+| + multi-scale × multi-channel grid fusion | **0.606** | 0.773 | 0.684 | gray+clahe+green, halves 10 to 16 |
+| (dx,dy) affine calibration | 0.606 |  |, | matcher already unbiased → no gain |
+| local phase-corr subpixel refine | 0.587 |  |, | **worse**: dropped |
 | small custom CNN, from scratch (6-ch) | 0.552 | 0.853 | 0.636 | too weak on 900 imgs → dropped |
-| hybrid CNN (classical grid fed as input) | 0.587–0.619 | — | — | late blend beats hybrid → dropped |
+| hybrid CNN (classical grid fed as input) | 0.587 to 0.619 |  |, | late blend beats hybrid → dropped |
 | CNN resnet18 **from scratch** (6-ch, vflip aug[yb→3−yb]+TTA) | 0.618 | **0.870** | 0.700 | BN+residual+heavy aug train well from scratch |
 | CNN resnet34 from scratch | 0.614 | 0.860 | 0.698 | architectural diversity |
-| + translation augmentation | 0.55–0.57 | — | — | **worse** — shifts target off center → dropped |
+| + translation augmentation | 0.55 to 0.57 |  |, | **worse**: shifts target off center → dropped |
 | CNN ensemble, 3 models (from scratch) | 0.629 | 0.876 | 0.706 | image-only |
 | CNN ensemble, **7 models** (resnet18×4 + resnet34×3) | 0.636 | 0.871 | 0.716 | more seeds ⇒ +0.7% CNN, +1.1% blend |
 | **Blend: CNN ensemble(log) ⊕ classical grid-marginals** | **~0.66** | 0.88 | 0.736 | per-axis-tuned WX=0.70, WY=0.50 |
 
 **Headline honest number: ~0.66 exact** (7-model ensemble + classical blend) vs 0.517 AI
-baseline and 0.143 flow prior — nested-5-fold-CV 0.650, per-axis-tuned fixed weights 0.660.
+baseline and 0.143 flow prior, nested-5-fold-CV 0.650, per-axis-tuned fixed weights 0.660.
 Every step was gated on this honest metric; reverting was used freely (translation aug, the
 classical-grid hybrid, phase-corr refine and affine calibration were all tried and dropped).
 
-**Blend weights — 1-D per-axis tuning.** x-band and y-band are independent argmaxes, so
+**Blend weights, 1-D per-axis tuning.** x-band and y-band are independent argmaxes, so
 each weight was tuned on its own 1-D curve (robust, low-DOF). x-band is flat over WX∈[0.5,0.7]
-(classical & CNN make *complementary* x-errors — the blend beats CNN-alone 0.871→0.884);
+(classical & CNN make *complementary* x-errors, the blend beats CNN-alone 0.871→0.884);
 y-band peaks sharply at WY=0.50 (0.736). The from-scratch CNN is weak enough that classical
-earns near-equal weight — unlike the pretrained variant (WX=0.85).
+earns near-equal weight, unlike the pretrained variant (WX=0.85).
 
 **Compliance note.** The CNNs are trained **only on the provided public train images**
-(`weights=None` — no ImageNet/external pretrained weights), to strictly honor the rule
+(`weights=None`: no ImageNet/external pretrained weights), to strictly honor the rule
 *"ensembles trained only from the provided public training data and images."* An earlier
 variant initialized from ImageNet-pretrained backbones scored 0.676 CV; it was dropped
 to remove any ambiguity about external data (the ~0.036 gap is the compliance cost). The
@@ -92,13 +92,13 @@ training-free classical matcher (0.606) is compliant under the strictest reading
 
 ## Error geometry (drove the effort)
 On the classical matcher, the dominant error was **y-band off-by-one with x correct
-(≈16% of samples)**, concentrated at the dy=0 boundary — pure estimation variance
+(≈16% of samples)**, concentrated at the dy=0 boundary, pure estimation variance
 (not a correctable bias). Second was **gross x-errors at horizon=4** (wrong bead).
 The CNN attacks the gross x-errors; the vflip-augmented y-head + blend attack the y
 boundary.
 
 ## Final solution (shipped)
-`solution.py` (self-timing, A10G ≤30 min, torch only — no pip, no pretrained weights):
+`solution.py` (self-timing, A10G ≤30 min, torch only, no pip, no pretrained weights):
 1. classical fused-grid matcher → test (dx,dy) + grid x/y-band marginals;
 2. self-timed CNN ensemble (resnet18/34 seeds, `weights=None`) trained from scratch on
    all 900 public images, vflip aug + vflip TTA, horizon scalar input;
@@ -115,7 +115,7 @@ Kept ready in case ImageNet-pretrained backbones are permitted (the rules list
 ambiguity is whether "trained only from the provided public training data" bars the
 ImageNet *initialization*). Identical pipeline but the CNN ensemble is
 ImageNet-initialized ResNet18/34/50 (downloaded at runtime, then fine-tuned only on the
-900 provided images — no committed/uploaded weights, no hardcoded predictions).
+900 provided images, no committed/uploaded weights, no hardcoded predictions).
 
 Pretrained backbone search (honest nested-5-fold CV):
 
@@ -124,11 +124,11 @@ Pretrained backbone search (honest nested-5-fold CV):
 | resnet18 + resnet34 (prior build, 0.66 **real**) | 0.676 |
 | + resnet50 @96 | 0.679 |
 | + resnet50 **@128px** | **0.696** |
-| + convnext_tiny (failed to converge from 6-ch stem) | — dropped |
+| + convnext_tiny (failed to converge from 6-ch stem) |, dropped |
 
 The jump comes from **resnet50 at 128px input**: higher resolution sharpens the fine
 ±2px y-band (yb 0.737→0.749), the dominant error. Final ensemble = resnet18 + resnet34 +
-resnet50@96 + resnet50@128 + classical, WX=0.85 WY=0.65 (y trusts the strong CNN more —
+resnet50@96 + resnet50@128 + classical, WX=0.85 WY=0.65 (y trusts the strong CNN more, 
 opposite of the weak from-scratch case). Honest nested-CV **0.696** (fixed-weight up to
 0.70). Since pretrained CV tracks real within ~1.5 pts (0.676→0.66), this maps to ≈0.68
 real. Output: `submission_pretrained.csv`; per-model resolution is self-timed. Does **not**

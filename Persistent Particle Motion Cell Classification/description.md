@@ -12,21 +12,21 @@ This is a fine-grained visual tracking and image classification problem. The par
 
 ### Public files
 
-- **train.csv** — Labeled training rows with columns:
+- **train.csv**: Labeled training rows with columns:
   - `sample_id`: unique sample identifier
   - `image_path`: path to the side-by-side crop-pair image
   - `horizon`: number of source frames between the left and right panel
   - `motion_class`: integer class label from 0 to 19
-- **test.csv** — Test rows with columns:
+- **test.csv**: Test rows with columns:
   - `sample_id`
   - `image_path`
   - `horizon`
-- **sample_submission.csv** — Required submission format with columns:
+- **sample_submission.csv**: Required submission format with columns:
   - `sample_id`
   - `motion_class`
-- **motion_class_map.csv** and **motion_class_map.json** — Class definitions for all 20 motion classes, including each class's `x_band`, `y_band`, `x_range`, and `y_range`.
-- **images/train/*.jpg** — Labeled training crop-pair images referenced by `train.csv`.
-- **images/test/*.jpg** — Unlabeled test crop-pair images referenced by `test.csv`.
+- **motion_class_map.csv** and **motion_class_map.json**: Class definitions for all 20 motion classes, including each class's `x_band`, `y_band`, `x_range`, and `y_range`.
+- **images/train/*.jpg**, Labeled training crop-pair images referenced by `train.csv`.
+- **images/test/*.jpg**, Unlabeled test crop-pair images referenced by `test.csv`.
 
 ### Image interpretation
 

@@ -1,4 +1,4 @@
-# Reaction Condition Completion — notes
+# Reaction Condition Completion: notes
 
 ## Task
 Predict 4 condition targets from reaction SMILES (`reactants>>products`):
@@ -32,9 +32,9 @@ rare/shifted/catalyst-positive rows; balanced-acc + macro-F1 penalize majority-o
 - Submitted n-gram MLP scored **0.3879** public (just above AI baseline); my proxy CV was 0.422.
   The gap is the proxy over-estimating the hidden Shift/Rare tracks (my "long-reaction" proxy is
   easier than the real source-shift). Fix = a representation that generalizes better to the shift.
-- ChemBERTa-77M fine-tune: tried, **underperformed (composite 0.34)** — task is reagent-driven,
+- ChemBERTa-77M fine-tune: tried, **underperformed (composite 0.34)**: task is reagent-driven,
   fingerprints capture it directly; deep structure didn't help.
-- Morgan + n-gram MLP ensemble (50/50): OOF composite 0.447 (Morgan 0.430, n-gram 0.422) — BUT the
+- Morgan + n-gram MLP ensemble (50/50): OOF composite 0.447 (Morgan 0.430, n-gram 0.422), BUT the
   runtime `pip install rdkit` was blocked by the grading sandbox (surfaced as a Convex server error
   in runSolutionChecks). REVERTED for reliability.
 - rdkit-free n-gram MLP (3 seeds): OOF composite 0.422, public ~0.388.

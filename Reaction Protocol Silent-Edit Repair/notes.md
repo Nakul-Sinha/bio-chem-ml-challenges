@@ -1,4 +1,4 @@
-# Reaction Protocol Silent-Edit Repair — notes
+# Reaction Protocol Silent-Edit Repair: notes
 
 ## Task
 - seq2seq: prompt (family header + noisy protocol_note + correction_notice) -> 6-slot canonical
@@ -15,7 +15,7 @@
 - **Bench tags = `word1-word2-NN+Letter`.** The **word-prefix** (word1-word2) is the real signal;
   the numeric+letter suffix is essentially noise.
   - Full-tag → (slot,value) is 100% deterministic in train (108 tags, ~3 aliases per slot-value).
-  - BUT test uses **different full tags** (71/72 unseen) — only the **33 word-prefixes are shared**.
+  - BUT test uses **different full tags** (71/72 unseen), only the **33 word-prefixes are shared**.
     => a full-tag lookup fails on test; the model must key on the prefix. (This is why the rules
     require a learned model, not a memorized table.)
 - **Correction_notice** parses deterministically: 4 templates × 6 slot-descriptions →
@@ -39,7 +39,7 @@
 
 ## Approach (rules-compliant)
 - Fine-tune **T5** (seq2seq) prompt→sequence.
-- **Test-matched augmentation**: degrade each train row into K test-style examples — unlabeled
+- **Test-matched augmentation**: degrade each train row into K test-style examples, unlabeled
   phrasing, 3 randomly-shown slots, randomized tag suffixes, a missing-operation sentence, keep
   the correction. Teaches decode (prefix→value, position-free), correction application, and
   hidden-slot inference, all in the test input distribution.
@@ -51,7 +51,7 @@
   Per-slot acc: prep .733 act .844 order .878 control .755 quench .673 workup .387.
 - Final: trained on all 1676 rows (11,732 augmented pairs, 8 epochs) -> submission.csv (524 rows).
   Independent strict validation PASSED; slot distributions match train marginals except workup
-  (collapses to organic_extract 68% — weight-0.25 trade-off, ~+0.006 max to fix, not pursued).
+  (collapses to organic_extract 68%, weight-0.25 trade-off, ~+0.006 max to fix, not pursued).
 - Decision: ship t5-small (within 0.008 of oracle ceiling 0.734; fits A10G 30-min budget). t5-base
   not pursued (negligible headroom vs the ceiling; effort better spent on C2/C3).
 

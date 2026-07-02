@@ -27,17 +27,17 @@ A strong solution should learn to translate the observed expression-context sequ
 
 The prepared public data contains:
 
-- `train.csv` — training examples with source and target sequences.
-- `test.csv` — test examples with source sequences only.
-- `sample_submission.csv` — required submission format.
-- `sequence_vocabulary.csv` — list of valid source and target tokens.
-- `observed_panel.csv` — anonymized metadata for observed expression tokens.
-- `target_panel.csv` — anonymized metadata for hidden target tokens.
-- `README.md` — short summary of the prepared files.
+- `train.csv`: training examples with source and target sequences.
+- `test.csv`: test examples with source sequences only.
+- `sample_submission.csv`: required submission format.
+- `sequence_vocabulary.csv`: list of valid source and target tokens.
+- `observed_panel.csv`: anonymized metadata for observed expression tokens.
+- `target_panel.csv`: anonymized metadata for hidden target tokens.
+- `README.md`: short summary of the prepared files.
 
 The private data contains:
 
-- `answers.csv` — private ground truth target sequences and hidden evaluation subset flags.
+- `answers.csv`: private ground truth target sequences and hidden evaluation subset flags.
 
 ### Task
 
@@ -61,18 +61,18 @@ DOM_004 ASSAY_001 CTX_018 GENCTX_003 COND_002 SEX_001 STAGE_000 SAMPLE_001 PANEL
 
 Token groups include:
 
-- `DOM_*` — anonymized coarse acquisition or context domain.
-- `ASSAY_*` — anonymized assay or measurement technology.
-- `CTX_*` — anonymized fine-grained biological context.
-- `GENCTX_*` — anonymized higher-level biological context.
-- `COND_*` — anonymized condition or status category.
-- `SEX_*` — anonymized sex metadata where available.
-- `STAGE_*` — anonymized development or stage metadata where available.
-- `SAMPLE_*` — anonymized sample or suspension type category.
-- `PANEL_NORMAL` or `PANEL_DAMAGE_*` — observed panel condition.
-- `TOTAL_Q*` — quantized total observed panel signal.
-- `NZ_Q*` — quantized number of nonzero observed probes.
-- `O000_Q*` through `O079_Q*` — quantized observed expression probe tokens.
+- `DOM_*`: anonymized coarse acquisition or context domain.
+- `ASSAY_*`: anonymized assay or measurement technology.
+- `CTX_*`: anonymized fine-grained biological context.
+- `GENCTX_*`: anonymized higher-level biological context.
+- `COND_*`: anonymized condition or status category.
+- `SEX_*`: anonymized sex metadata where available.
+- `STAGE_*`: anonymized development or stage metadata where available.
+- `SAMPLE_*`: anonymized sample or suspension type category.
+- `PANEL_NORMAL` or `PANEL_DAMAGE_*`: observed panel condition.
+- `TOTAL_Q*`: quantized total observed panel signal.
+- `NZ_Q*`: quantized number of nonzero observed probes.
+- `O000_Q*` through `O079_Q*`: quantized observed expression probe tokens.
 
 The order of tokens in the source sequence is fixed and meaningful.
 
@@ -118,16 +118,16 @@ Important details:
 
 `train.csv` contains:
 
-- `id` — stable row identifier.
-- `source_sequence` — input sequence for the model.
-- `target_sequence` — ground-truth output sequence for the model.
+- `id`: stable row identifier.
+- `source_sequence`: input sequence for the model.
+- `target_sequence`: ground-truth output sequence for the model.
 
 ### Columns In `test.csv`
 
 `test.csv` contains:
 
-- `id` — stable row identifier.
-- `source_sequence` — input sequence for the model.
+- `id`: stable row identifier.
+- `source_sequence`: input sequence for the model.
 
 It does not contain `target_sequence`.
 
@@ -137,10 +137,10 @@ It does not contain `target_sequence`.
 
 Columns:
 
-- `token` — token string.
-- `token_type` — one of `metadata`, `observed_expression`, `summary`, `target_probe`, or `special`.
-- `description` — short anonymized description.
-- `train_count` — number of occurrences in training source or target sequences where applicable.
+- `token`: token string.
+- `token_type`: one of `metadata`, `observed_expression`, `summary`, `target_probe`, or `special`.
+- `description`: short anonymized description.
+- `train_count`: number of occurrences in training source or target sequences where applicable.
 
 ### Observed Panel File
 
@@ -148,10 +148,10 @@ Columns:
 
 Columns:
 
-- `observed_index` — observed probe position.
-- `source_token_prefix` — matching source token prefix such as `O000`.
-- `feature_code` — anonymized observed feature identifier.
-- `damage_group` — deterministic missing-probe group affecting this observed feature, or `none`.
+- `observed_index`: observed probe position.
+- `source_token_prefix`: matching source token prefix such as `O000`.
+- `feature_code`: anonymized observed feature identifier.
+- `damage_group`: deterministic missing-probe group affecting this observed feature, or `none`.
 
 ### Target Panel File
 
@@ -159,13 +159,13 @@ Columns:
 
 Columns:
 
-- `target_index` — hidden target probe position.
-- `target_token_prefix` — target token prefix such as `T00`.
-- `target_code` — anonymized hidden target identifier.
-- `train_active_count` — number of training rows where this target appears in the target sequence.
-- `train_b1_count` — number of training rows where this target appears as `B1`.
-- `train_b2_count` — number of training rows where this target appears as `B2`.
-- `train_b3_count` — number of training rows where this target appears as `B3`.
+- `target_index`: hidden target probe position.
+- `target_token_prefix`: target token prefix such as `T00`.
+- `target_code`: anonymized hidden target identifier.
+- `train_active_count`: number of training rows where this target appears in the target sequence.
+- `train_b1_count`: number of training rows where this target appears as `B1`.
+- `train_b2_count`: number of training rows where this target appears as `B2`.
+- `train_b3_count`: number of training rows where this target appears as `B3`.
 
 ### Submission Format
 

@@ -1,4 +1,4 @@
-# Microbial DNA Compositional Motif Restoration — notes
+# Microbial DNA Compositional Motif Restoration: notes
 
 ## Task
 Contig = top-16 most-frequent hexamer tokens (opaque ints 1..1024), rank-ordered. One mid-rank
@@ -19,18 +19,18 @@ genome's sibling contigs. Train/test genomes DISJOINT.
 - **Group-CV by genome** (disjoint, mirrors test). **Test-faithful one-mask-per-contig**, all
   transductive stats from VISIBLE tokens only (leak-free). Caught and removed two leaks:
   (a) genome co-occurrence inflated by the contig's own gold (+15), (b) global co-occurrence
-  self-inclusion — fixed with leave-one-GENOME-out globals.
+  self-inclusion, fixed with leave-one-GENOME-out globals.
 - Report both raw contig-weighted CV and a **test-calibrated** estimate (reweight per-genome-size
   MRR by the test genome-size distribution), since test skews to large genomes.
 
 ## Journey
-- v1 (co-occurrence + genome-cooc + PMI blend): honest CV ~0.167 — BELOW the AI baseline. Rejected.
+- v1 (co-occurrence + genome-cooc + PMI blend): honest CV ~0.167, BELOW the AI baseline. Rejected.
 - Diagnosis: 94% sibling-union recall, but frequency/co-occurrence ranking caps ~0.17.
 - **Breakthrough: transductive contig-similarity collaborative filtering (CF).** The gold appears
   in sibling contigs most SIMILAR to the target. Score a candidate by IDF-weighted
   similarity^power voting over siblings; discount genome-ubiquitous candidates (they're genuinely
   absent here, not the gold). This jumped CV to ~0.21 and test-calibrated ~0.22.
-- Explored and REJECTED (none beat CF honestly): from-scratch masked-LM transformer (0.12 —
+- Explored and REJECTED (none beat CF honestly): from-scratch masked-LM transformer (0.12, 
   overfits the ~90 train genomes, can't access the test genome's co-occurrence); LightGBM
   learning-to-rank reranker over CF+cooc+rank features (0.205, overfits cross-genome); linear /
   z-scored rank-fusion blends with gcond/cooc (all < CF). CF (non-parametric, transductive)
